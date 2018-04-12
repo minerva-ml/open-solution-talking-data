@@ -1,0 +1,46 @@
+project-key: TDAT
+
+name: talking data
+tags: [boiler_plate]
+
+metric:
+  channel: 'ROC_AUC'
+  goal: maximize
+
+# Comment out if not in Cloud Environment
+#pip-requirements-file: requirements.txt
+
+exclude:
+  - output
+  - imgs
+  - neptune.log
+  - offline_job.log
+  - .git
+  - .idea
+  - .ipynb_checkpoints
+
+parameters:
+  data_dir: /path/to/toxic/data
+  experiment_dir: /my/working/directory i.e. ~/toxic/trained_pipelines/fasttext_gru
+
+  overwrite: 1
+  num_workers: 4
+
+# Preprocessing
+
+# Random Forest
+  random_forest__n_estimators: None
+
+# XGBoost
+  xgboost__objective: None
+  xgboost__eval_metric: None
+  xgboost__scale_pos_weight: None
+  xgboost__n_estimators: None
+  xgboost__learning_rate: None
+  xgboost__max_depth: None
+  xgboost__min_child_weight: None
+  xgboost__gamma: None
+  xgboost__subsample: None
+  xgboost__colsample_bytree: None
+  xgboost__reg_lambda: None
+  xgboost__reg_alpha: None

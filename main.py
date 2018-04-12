@@ -1,0 +1,157 @@
+import os
+import shutil
+
+import click
+import pandas as pd
+from deepsense import neptune
+from sklearn.metrics import roc_auc_score
+
+from pipeline_config import SOLUTION_CONFIG, FEATURE_COLUMNS, TARGET_COLUMNS
+from pipelines import PIPELINES
+from preparation import train_valid_split_on_timestamp
+from utils import init_logger, read_params, create_submission, set_seed
+
+logger = init_logger()
+ctx = neptune.Context()
+params = read_params(ctx)
+
+set_seed(1234)
+
+
+@click.group()
+def action():
+    pass
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+def train_pipeline(pipeline_name, validation_size, dev_mode):
+    _train_pipeline(pipeline_name, validation_size, dev_mode)
+
+
+def _train_pipeline(pipeline_name, validation_size, dev_mode):
+    if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
+        shutil.rmtree(params.experiment_dir)
+
+    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train_sample.csv'))
+
+    meta_train_split, _ = train_valid_split_on_timestamp(meta_train, validation_size)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(100, random_state=1234)
+
+    data = {'input': {'X': meta_train_split[FEATURE_COLUMNS],
+                      'y': meta_train_split[TARGET_COLUMNS],
+                      },
+            }
+
+    pipeline = PIPELINES[pipeline_name]['train'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
+    pipeline.fit_transform(data)
+    pipeline.clean_cache()
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+def evaluate_pipeline(pipeline_name, validation_size, dev_mode):
+    _evaluate_pipeline(pipeline_name, validation_size, dev_mode)
+
+
+def _evaluate_pipeline(pipeline_name, validation_size, dev_mode):
+    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train_sample.csv'))
+
+    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size)
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(10, random_state=1234)
+
+    data = {'input': {'X': meta_valid_split[FEATURE_COLUMNS],
+                      'y': None,
+                      },
+            }
+    y_true = meta_valid_split[TARGET_COLUMNS].values
+
+    pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
+    output = pipeline.transform(data)
+    pipeline.clean_cache()
+    y_pred = output['y_pred']
+
+    logger.info('Calculating ROC_AUC Scores')
+    score = roc_auc_score(y_true, y_pred)
+    logger.info('ROC_AUC score on validation is {}'.format(score))
+    ctx.channel_send('ROC_AUC', 0, score)
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
+              required=False)
+def predict_pipeline(pipeline_name, dev_mode, chunk_size):
+    if chunk_size is not None:
+        _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size)
+    else:
+        _predict_pipeline(pipeline_name, dev_mode)
+
+
+def _predict_pipeline(pipeline_name, dev_mode):
+    meta_test = pd.read_csv(os.path.join(params.data_dir, 'test.csv'))
+
+    if dev_mode:
+        meta_test = meta_test.sample(10, random_state=1234)
+
+    data = {'input': {'X': meta_test[FEATURE_COLUMNS],
+                      'y': None,
+                      },
+            }
+
+    pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
+    output = pipeline.transform(data)
+    pipeline.clean_cache()
+    y_pred = output['y_pred']
+
+    submission = create_submission(meta_test, y_pred)
+
+    submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
+    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
+    logger.info('submission saved to {}'.format(submission_filepath))
+    logger.info('submission head \n\n{}'.format(submission.head()))
+
+
+def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
+    test_filename = os.path.join(params.data_dir, 'test.csv')
+
+    submission_chunks = []
+    for meta_test_chunk in pd.read_csv(test_filename, chunksize=chunk_size):
+        data = {'input': {'meta': meta_test_chunk,
+                          },
+                }
+
+        pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+        pipeline.clean_cache()
+        output = pipeline.transform(data)
+        pipeline.clean_cache()
+        y_pred = output['y_pred']
+
+        submission_chunk = create_submission(meta_test_chunk, y_pred)
+        submission_chunks.append(submission_chunk)
+
+        if dev_mode:
+            break
+
+    submission = pd.concat(submission_chunks, axis=0)
+
+    submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
+    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
+    logger.info('submission saved to {}'.format(submission_filepath))
+    logger.info('submission head \n\n{}'.format(submission.head()))
+
+
+if __name__ == "__main__":
+    action()
