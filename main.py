@@ -35,7 +35,10 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta_train = read_csv_last_n_rows(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
+    if dev_mode:
+        meta_train = read_csv_last_n_rows(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
+    else:
+        meta_train = pd.read_csv(os.path.join(params.data_dir, 'train.csv'), nrows=10000)
 
     meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
                                                                         timestamp_column=CV_COLUMNS)
@@ -67,7 +70,10 @@ def evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
 
 
 def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
-    meta_train = read_csv_last_n_rows(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
+    if dev_mode:
+        meta_train = read_csv_last_n_rows(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
+    else:
+        meta_train = pd.read_csv(os.path.join(params.data_dir, 'train.csv'), nrows=1000)
 
     meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
                                                                         timestamp_column=CV_COLUMNS)

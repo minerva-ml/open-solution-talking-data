@@ -21,9 +21,9 @@ exclude:
 
 parameters:
   data_dir: /mnt/ml-team/minerva/talking_data/data
-  experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/boiler_plate
+  experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
 
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   verbose: 0
 
