@@ -26,7 +26,7 @@ parameters:
   experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
 
 # Execution
-  overwrite: 0
+  overwrite: 1
   num_workers: 24
   verbose: 0
   sort_data: 0

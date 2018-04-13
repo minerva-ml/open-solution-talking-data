@@ -25,7 +25,7 @@ def action():
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 def train(pipeline_name, validation_size, read_n_rows, dev_mode):
     _train(pipeline_name, validation_size, read_n_rows, dev_mode)
@@ -36,7 +36,7 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
         shutil.rmtree(params.experiment_dir)
 
     if dev_mode:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e5))
+        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
     else:
         meta_train = read_csv_last_n_rows(params.train_filepath, nrows=read_n_rows)
 
@@ -44,9 +44,12 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
                                                                         sort=params.sort_data,
                                                                         timestamp_column=CV_COLUMNS)
 
+    logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
+    logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
+
     if dev_mode:
-        meta_train_split = meta_train_split.sample(10e3)
-        meta_valid_split = meta_valid_split.sample(10e3)
+        meta_train_split = meta_train_split.sample(int(10e4))
+        meta_valid_split = meta_valid_split.sample(int(10e4))
 
     data = {'input': {'X': meta_train_split[FEATURE_COLUMNS],
                       'y': meta_train_split[TARGET_COLUMNS],
@@ -64,7 +67,7 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)
@@ -74,7 +77,7 @@ def evaluate(pipeline_name, validation_size, read_n_rows, dev_mode, worst_n):
 
 def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode, worst_n):
     if dev_mode:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e5))
+        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
     else:
         meta_train = read_csv_last_n_rows(params.train_filepath, nrows=read_n_rows)
 
@@ -82,8 +85,10 @@ def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode, worst_n):
                                                                         sort=params.sort_data,
                                                                         timestamp_column=CV_COLUMNS)
 
+    logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
+
     if dev_mode:
-        meta_valid_split = meta_valid_split.sample(10e3)
+        meta_valid_split = meta_valid_split.sample(int(10e4))
 
     data = {'input': {'X': meta_valid_split[FEATURE_COLUMNS],
                       'y': None,
@@ -121,7 +126,7 @@ def predict(pipeline_name, dev_mode, chunk_size):
 
 def _predict(pipeline_name, dev_mode):
     if dev_mode:
-        meta_test = pd.read_csv(params.test_filepath, nrows=10)
+        meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
     else:
         meta_test = pd.read_csv(params.test_filepath)
 
@@ -175,7 +180,7 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -196,7 +201,7 @@ def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -215,7 +220,7 @@ def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chun
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)

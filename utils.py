@@ -82,17 +82,14 @@ def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort
         meta_train_split = meta_train_split.sample(frac=1, random_state=random_state)
         meta_valid_split = meta_valid_split.sample(frac=1, random_state=random_state)
 
-    print('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
-    print('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
-
     return meta_train_split, meta_valid_split
 
 
 def read_csv_last_n_rows(filepath, nrows):
-    columns = pd.read_csv(filepath, nrows=1).columns
+    columns = pd.read_csv(filepath, nrows=1, low_memory=False).columns
     with open(filepath, 'r') as f:
         q = deque(f, nrows)
-    df = pd.read_csv(StringIO(''.join(q)), header=None)
+    df = pd.read_csv(StringIO(''.join(q)), header=None, low_memory=False)
     df.columns = columns
     return df
 
