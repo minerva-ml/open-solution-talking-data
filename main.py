@@ -27,11 +27,11 @@ def action():
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 @click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
-    _train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode)
+def train(pipeline_name, validation_size, read_n_rows, dev_mode):
+    _train(pipeline_name, validation_size, read_n_rows, dev_mode)
 
 
-def _train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
+def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
@@ -62,11 +62,11 @@ def _train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 @click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
-    _evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode)
+def evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
+    _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
 
 
-def _evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
+def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
     meta_train = pd.read_csv(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
 
     meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
@@ -98,14 +98,14 @@ def _evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
-def predict_pipeline(pipeline_name, dev_mode, chunk_size):
+def predict(pipeline_name, dev_mode, chunk_size):
     if chunk_size is not None:
-        _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size)
+        _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
     else:
-        _predict_pipeline(pipeline_name, dev_mode)
+        _predict(pipeline_name, dev_mode)
 
 
-def _predict_pipeline(pipeline_name, dev_mode):
+def _predict(pipeline_name, dev_mode):
     if dev_mode:
         meta_test = pd.read_csv(os.path.join(params.data_dir, 'test.csv'), nrows=10)
     else:
@@ -131,7 +131,7 @@ def _predict_pipeline(pipeline_name, dev_mode):
     logger.info('submission head \n\n{}'.format(submission.head()))
 
 
-def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
+def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
     test_filename = os.path.join(params.data_dir, 'test.csv')
 
     submission_chunks = []
@@ -158,6 +158,48 @@ def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
     submission.to_csv(submission_filepath, index=None, encoding='utf-8')
     logger.info('submission saved to {}'.format(submission_filepath))
     logger.info('submission head \n\n{}'.format(submission.head()))
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
+              required=False)
+def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chunk_size):
+    logger.info('training')
+    train(pipeline_name, validation_size, read_n_rows, dev_mode)
+    logger.info('evaluate')
+    evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+    logger.info('predicting')
+    predict(pipeline_name, dev_mode, chunk_size)
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
+              required=False)
+def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chunk_size):
+    logger.info('evaluate')
+    evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+    logger.info('predicting')
+    predict(pipeline_name, dev_mode, chunk_size)
+
+
+@action.command()
+@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+def train_evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
+    logger.info('training')
+    train(pipeline_name, validation_size, read_n_rows, dev_mode)
+    logger.info('evaluate')
+    evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
 
 
 if __name__ == "__main__":
