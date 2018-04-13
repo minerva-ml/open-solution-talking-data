@@ -1,5 +1,3 @@
-import os
-
 from attrdict import AttrDict
 from deepsense import neptune
 

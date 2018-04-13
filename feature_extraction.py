@@ -11,7 +11,6 @@ class FeatureDispatcher(BaseTransformer):
         self.timestamp_columns = timestamp_columns
 
     def transform(self, X, y=None, **kwargs):
-        print(X.shape)
         outputs = {}
         if self.numerical_columns is not None:
             outputs['numerical_features'] = X[self.numerical_columns].values

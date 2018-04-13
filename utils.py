@@ -2,6 +2,8 @@ import logging
 import random
 import sys
 import math
+from collections import deque
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -70,8 +72,7 @@ def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, shuf
     n_rows = len(meta)
     train_size = n_rows - math.floor(n_rows * validation_size)
 
-    meta = meta.sort_values(timestamp_column)
-
+    meta.sort_values(timestamp_column, inplace=True)
     meta_train_split = meta.iloc[:train_size]
     meta_valid_split = meta.iloc[train_size:]
 
@@ -80,3 +81,12 @@ def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, shuf
         meta_valid_split = meta_valid_split.sample(frac=1, random_state=random_state)
 
     return meta_train_split, meta_valid_split
+
+
+def read_csv_last_n_rows(filepath, nrows):
+    columns = pd.read_csv(filepath, nrows=1).columns
+    with open(filepath, 'r') as f:
+        q = deque(f, nrows)
+    df = pd.read_csv(StringIO(''.join(q)), header=None)
+    df.columns = columns
+    return df

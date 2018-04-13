@@ -1,7 +1,7 @@
 project-key: TDAT
 
 name: talking data
-tags: [boiler_plate]
+tags: [baseline]
 
 metric:
   channel: 'ROC_AUC'
@@ -27,8 +27,6 @@ parameters:
   num_workers: 4
   verbose: 0
 
-# Preprocessing
-
 # Light GBM
   lgbm__boosting_type: 'gbdt'
   lgbm__objective: 'binary'
@@ -39,5 +37,5 @@ parameters:
   lgbm__subsample: 0.8
   lgbm__colsample_bytree: 0.5
   lgbm__reg_lambda: 0.0
-  lgbm__number_boosting_rounds: 10
-  lgbm__early_stopping_rounds: 2
+  lgbm__number_boosting_rounds: 500
+  lgbm__early_stopping_rounds: 20
