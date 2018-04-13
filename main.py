@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 from pipeline_config import SOLUTION_CONFIG, FEATURE_COLUMNS, TARGET_COLUMNS, CV_COLUMNS
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, train_valid_split_on_timestamp, \
-    read_csv_last_n_rows, save_worst_predictions
+    save_worst_predictions
 
 set_seed(1234)
 logger = init_logger()
@@ -24,8 +24,9 @@ def action():
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
+              required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 def train(pipeline_name, validation_size, read_n_rows, dev_mode):
     _train(pipeline_name, validation_size, read_n_rows, dev_mode)
@@ -35,21 +36,21 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
+    logger.info('reading data in')
     if dev_mode:
         meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
     else:
-        meta_train = read_csv_last_n_rows(params.train_filepath, nrows=read_n_rows)
+        meta_train = pd.read_csv(params.train_filepath, nrows=int(read_n_rows))
 
     meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
                                                                         sort=params.sort_data,
                                                                         timestamp_column=CV_COLUMNS)
-
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
-    if dev_mode:
-        meta_train_split = meta_train_split.sample(int(10e4))
-        meta_valid_split = meta_valid_split.sample(int(10e4))
+    logger.info('shuffling data')
+    meta_train_split = meta_train_split.sample(frac=1)
+    meta_valid_split = meta_valid_split.sample(frac=1)
 
     data = {'input': {'X': meta_train_split[FEATURE_COLUMNS],
                       'y': meta_train_split[TARGET_COLUMNS],
@@ -66,8 +67,9 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
+              required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)
@@ -76,10 +78,11 @@ def evaluate(pipeline_name, validation_size, read_n_rows, dev_mode, worst_n):
 
 
 def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode, worst_n):
+    logger.info('reading data in')
     if dev_mode:
         meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
     else:
-        meta_train = read_csv_last_n_rows(params.train_filepath, nrows=read_n_rows)
+        meta_train = pd.read_csv(params.train_filepath, nrows=int(read_n_rows))
 
     meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
                                                                         sort=params.sort_data,
@@ -125,6 +128,7 @@ def predict(pipeline_name, dev_mode, chunk_size):
 
 
 def _predict(pipeline_name, dev_mode):
+    logger.info('reading data in')
     if dev_mode:
         meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
     else:
@@ -179,8 +183,9 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
+              required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -200,8 +205,9 @@ def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
+              required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -219,8 +225,9 @@ def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chun
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(60e7), required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
+              required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)

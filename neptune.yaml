@@ -21,7 +21,7 @@ exclude:
 
 parameters:
 # Data
-  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_80e7.csv
+  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_sorted.csv
   test_filepath: /mnt/ml-team/minerva/talking_data/data/test.csv
   experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
 

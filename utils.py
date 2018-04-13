@@ -3,8 +3,6 @@ import random
 import sys
 import os
 import math
-from collections import deque
-from io import StringIO
 
 import numpy as np
 from sklearn.externals import joblib
@@ -70,7 +68,7 @@ def set_seed(seed):
     np.random.seed(seed)
 
 
-def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort=True, shuffle=True, random_state=1234):
+def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort=True):
     n_rows = len(meta)
     train_size = n_rows - math.floor(n_rows * validation_size)
     if sort:
@@ -78,20 +76,7 @@ def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort
     meta_train_split = meta.iloc[:train_size]
     meta_valid_split = meta.iloc[train_size:]
 
-    if shuffle:
-        meta_train_split = meta_train_split.sample(frac=1, random_state=random_state)
-        meta_valid_split = meta_valid_split.sample(frac=1, random_state=random_state)
-
     return meta_train_split, meta_valid_split
-
-
-def read_csv_last_n_rows(filepath, nrows):
-    columns = pd.read_csv(filepath, nrows=1, low_memory=False).columns
-    with open(filepath, 'r') as f:
-        q = deque(f, nrows)
-    df = pd.read_csv(StringIO(''.join(q)), header=None, low_memory=False)
-    df.columns = columns
-    return df
 
 
 def save_worst_predictions(experiment_dir, y_true, y_pred, raw_data, worst_n, eps=1e-15):
