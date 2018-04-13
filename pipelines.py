@@ -1,35 +1,60 @@
 from functools import partial
 
-from sklearn.ensemble import RandomForestClassifier
-
-from steps.base import Step, Dummy, sparse_hstack_inputs
-from steps.sklearn.models import make_transformer
+from steps.base import Step, Dummy
+from feature_extraction import FeatureDispatcher
+from steps.misc import LightGBM
 
 
 def simple_pipe(config, train_mode=True):
-    tfidf_char_vectorizer, tfidf_word_vectorizer = _tfidf(preprocessed_input, config)
+    feature_dispatcher = Step(name='feature_dispatcher',
+                              transformer=FeatureDispatcher(**config.feature_dispatcher),
+                              input_data=['input'],
+                              adapter={'X': ([('input', 'X')]),
+                                       },
+                              cache_dirpath=config.env.cache_dirpath)
 
-    tfidf_logreg = Step(name='tfidf_logreg',
-                        transformer=LogisticRegressionMultilabel(**config.logistic_regression_multilabel),
-                        input_steps=[preprocessed_input, tfidf_char_vectorizer, tfidf_word_vectorizer],
-                        adapter={'X': ([('tfidf_char_vectorizer', 'features'),
-                                        ('tfidf_word_vectorizer', 'features')], sparse_hstack_inputs),
-                                 'y': ([('cleaning_output', 'y')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath)
-    output = Step(name='tfidf_logreg_output',
+    if train_mode:
+        feature_dispatcher_valid = Step(name='feature_dispatcher_valid',
+                                        transformer=feature_dispatcher,
+                                        input_data=['input'],
+                                        adapter={'X': ([('input', 'X_valid')]),
+                                                 },
+                                        cache_dirpath=config.env.cache_dirpath)
+
+        light_gbm = Step(name='light_gbm',
+                         transformer=LightGBM(**config.light_gbm),
+                         input_data=['input'],
+                         input_steps=[feature_dispatcher, feature_dispatcher_valid],
+                         adapter={'X': ([(feature_dispatcher.name, 'categorical_features')]),
+                                  'y': ([('input', 'y')], to_numpy_label),
+                                  'feature_names': ([(feature_dispatcher.name, 'categorical_feature_names')]),
+                                  'categorical_features': ([(feature_dispatcher.name, 'categorical_feature_names')]),
+                                  'X_valid': ([(feature_dispatcher_valid.name, 'categorical_features')]),
+                                  'y_valid': ([('input', 'y_valid')], to_numpy_label),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath)
+
+    else:
+        light_gbm = Step(name='light_gbm',
+                         transformer=LightGBM(**config.light_gbm),
+                         input_steps=[feature_dispatcher],
+                         adapter={'X': ([(feature_dispatcher.name, 'categorical_features')]),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath)
+
+    output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[tfidf_logreg],
-                  adapter={'y_pred': ([('tfidf_logreg', 'prediction_probability')]),
+                  input_steps=[light_gbm],
+                  adapter={'y_pred': ([(light_gbm.name, 'prediction')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
 
-def extract_features_app(config):
-    return
+def to_numpy_label(inputs):
+    return inputs[0].values.reshape(-1)
 
 
-PIPELINES = {'dummy_pipe': {'train': partial(simple_pipe, train_mode=True),
-                            'inference': partial(simple_pipe, train_mode=False)},
+PIPELINES = {'simple_pipe': {'train': partial(simple_pipe, train_mode=True),
+                             'inference': partial(simple_pipe, train_mode=False)},
              }

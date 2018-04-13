@@ -20,27 +20,24 @@ exclude:
   - .ipynb_checkpoints
 
 parameters:
-  data_dir: /path/to/toxic/data
-  experiment_dir: /my/working/directory i.e. ~/toxic/trained_pipelines/fasttext_gru
+  data_dir: /mnt/ml-team/minerva/talking_data/data
+  experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/boiler_plate
 
   overwrite: 1
   num_workers: 4
+  verbose: 0
 
 # Preprocessing
 
-# Random Forest
-  random_forest__n_estimators: None
-
-# XGBoost
-  xgboost__objective: None
-  xgboost__eval_metric: None
-  xgboost__scale_pos_weight: None
-  xgboost__n_estimators: None
-  xgboost__learning_rate: None
-  xgboost__max_depth: None
-  xgboost__min_child_weight: None
-  xgboost__gamma: None
-  xgboost__subsample: None
-  xgboost__colsample_bytree: None
-  xgboost__reg_lambda: None
-  xgboost__reg_alpha: None
+# Light GBM
+  lgbm__boosting_type: 'gbdt'
+  lgbm__objective: 'binary'
+  lgbm__metric: 'auc'
+  lgbm__learning_rate: 0.01
+  lgbm__max_depth: -1
+  lgbm__min_child_weight: 1
+  lgbm__subsample: 0.8
+  lgbm__colsample_bytree: 0.5
+  lgbm__reg_lambda: 0.0
+  lgbm__number_boosting_rounds: 10
+  lgbm__early_stopping_rounds: 2

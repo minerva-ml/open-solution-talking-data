@@ -1,6 +1,7 @@
 import logging
 import random
 import sys
+import math
 
 import numpy as np
 import pandas as pd
@@ -63,3 +64,19 @@ def sigmoid(x):
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
+
+
+def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, shuffle=True, random_state=1234):
+    n_rows = len(meta)
+    train_size = n_rows - math.floor(n_rows * validation_size)
+
+    meta = meta.sort_values(timestamp_column)
+
+    meta_train_split = meta.iloc[:train_size]
+    meta_valid_split = meta.iloc[train_size:]
+
+    if shuffle:
+        meta_train_split = meta_train_split.sample(frac=1, random_state=random_state)
+        meta_valid_split = meta_valid_split.sample(frac=1, random_state=random_state)
+
+    return meta_train_split, meta_valid_split

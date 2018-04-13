@@ -6,10 +6,9 @@ import pandas as pd
 from deepsense import neptune
 from sklearn.metrics import roc_auc_score
 
-from pipeline_config import SOLUTION_CONFIG, FEATURE_COLUMNS, TARGET_COLUMNS
+from pipeline_config import SOLUTION_CONFIG, FEATURE_COLUMNS, TARGET_COLUMNS, CV_COLUMNS
 from pipelines import PIPELINES
-from preparation import train_valid_split_on_timestamp
-from utils import init_logger, read_params, create_submission, set_seed
+from utils import init_logger, read_params, create_submission, set_seed, train_valid_split_on_timestamp
 
 logger = init_logger()
 ctx = neptune.Context()
@@ -26,24 +25,29 @@ def action():
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def train_pipeline(pipeline_name, validation_size, dev_mode):
-    _train_pipeline(pipeline_name, validation_size, dev_mode)
+def train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
+    _train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode)
 
 
-def _train_pipeline(pipeline_name, validation_size, dev_mode):
+def _train_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train_sample.csv'))
+    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
 
-    meta_train_split, _ = train_valid_split_on_timestamp(meta_train, validation_size)
+    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
+                                                                        timestamp_column=CV_COLUMNS)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(100, random_state=1234)
+        meta_train_split = meta_train_split.sample(100)
+        meta_valid_split = meta_valid_split.sample(10)
 
     data = {'input': {'X': meta_train_split[FEATURE_COLUMNS],
                       'y': meta_train_split[TARGET_COLUMNS],
+                      'X_valid': meta_valid_split[FEATURE_COLUMNS],
+                      'y_valid': meta_valid_split[TARGET_COLUMNS],
                       },
             }
 
@@ -56,18 +60,20 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
+@click.option('-n', '--read_n_rows', help='read first n rows of data', default=500000, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def evaluate_pipeline(pipeline_name, validation_size, dev_mode):
-    _evaluate_pipeline(pipeline_name, validation_size, dev_mode)
+def evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
+    _evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode)
 
 
-def _evaluate_pipeline(pipeline_name, validation_size, dev_mode):
-    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train_sample.csv'))
+def _evaluate_pipeline(pipeline_name, validation_size, read_n_rows, dev_mode):
+    meta_train = pd.read_csv(os.path.join(params.data_dir, 'train.csv'), nrows=read_n_rows)
 
-    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size)
+    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
+                                                                        timestamp_column=CV_COLUMNS)
 
     if dev_mode:
-        meta_valid_split = meta_valid_split.sample(10, random_state=1234)
+        meta_valid_split = meta_valid_split.sample(10)
 
     data = {'input': {'X': meta_valid_split[FEATURE_COLUMNS],
                       'y': None,
@@ -100,10 +106,10 @@ def predict_pipeline(pipeline_name, dev_mode, chunk_size):
 
 
 def _predict_pipeline(pipeline_name, dev_mode):
-    meta_test = pd.read_csv(os.path.join(params.data_dir, 'test.csv'))
-
     if dev_mode:
-        meta_test = meta_test.sample(10, random_state=1234)
+        meta_test = pd.read_csv(os.path.join(params.data_dir, 'test.csv'), nrows=10)
+    else:
+        meta_test = pd.read_csv(os.path.join(params.data_dir, 'test.csv'))
 
     data = {'input': {'X': meta_test[FEATURE_COLUMNS],
                       'y': None,
@@ -116,6 +122,7 @@ def _predict_pipeline(pipeline_name, dev_mode):
     pipeline.clean_cache()
     y_pred = output['y_pred']
 
+    logger.info('creating submission')
     submission = create_submission(meta_test, y_pred)
 
     submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
