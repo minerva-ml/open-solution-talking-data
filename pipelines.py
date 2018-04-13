@@ -5,7 +5,7 @@ from feature_extraction import FeatureDispatcher
 from steps.misc import LightGBM
 
 
-def simple_pipe(config, train_mode=True):
+def baseline(config, train_mode=True):
     feature_dispatcher = Step(name='feature_dispatcher',
                               transformer=FeatureDispatcher(**config.feature_dispatcher),
                               input_data=['input'],
@@ -55,6 +55,6 @@ def to_numpy_label(inputs):
     return inputs[0].values.reshape(-1)
 
 
-PIPELINES = {'simple_pipe': {'train': partial(simple_pipe, train_mode=True),
-                             'inference': partial(simple_pipe, train_mode=False)},
+PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),
+                             'inference': partial(baseline, train_mode=False)},
              }

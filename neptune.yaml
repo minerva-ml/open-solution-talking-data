@@ -20,12 +20,14 @@ exclude:
   - .ipynb_checkpoints
 
 parameters:
-  data_dir: /mnt/ml-team/minerva/talking_data/data
+  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_20e7.csv
+  test_filepath: /mnt/ml-team/minerva/talking_data/data/test.csv
   experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
 
   overwrite: 0
   num_workers: 4
   verbose: 0
+  sort_data: 0
 
 # Light GBM
   lgbm__boosting_type: 'gbdt'
@@ -37,5 +39,5 @@ parameters:
   lgbm__subsample: 0.8
   lgbm__colsample_bytree: 0.5
   lgbm__reg_lambda: 0.0
-  lgbm__number_boosting_rounds: 500
-  lgbm__early_stopping_rounds: 20
+  lgbm__number_boosting_rounds: 100
+  lgbm__early_stopping_rounds: 10
