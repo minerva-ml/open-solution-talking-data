@@ -25,7 +25,7 @@ def action():
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read first n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 def train(pipeline_name, validation_size, read_n_rows, dev_mode):
     _train(pipeline_name, validation_size, read_n_rows, dev_mode)
@@ -64,7 +64,7 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read first n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)
@@ -175,7 +175,7 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read first n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -196,7 +196,7 @@ def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read first n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
@@ -215,7 +215,7 @@ def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chun
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-n', '--read_n_rows', help='read first n rows of data', default=int(80e7), required=False)
+@click.option('-n', '--read_n_rows', help='read last n rows of data', default=int(80e7), required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-w', '--worst_n', help='save worst n observations on evaluation dataset', default=None,
               required=False)

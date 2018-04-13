@@ -20,12 +20,14 @@ exclude:
   - .ipynb_checkpoints
 
 parameters:
-  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_20e7.csv
+# Data
+  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_80e7.csv
   test_filepath: /mnt/ml-team/minerva/talking_data/data/test.csv
   experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
 
+# Execution
   overwrite: 0
-  num_workers: 4
+  num_workers: 24
   verbose: 0
   sort_data: 0
 
