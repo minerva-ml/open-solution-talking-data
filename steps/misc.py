@@ -30,7 +30,7 @@ class LightGBM(BaseTransformer):
                                    evals_result=evaluation_results,
                                    num_boost_round=self.training_config.number_boosting_rounds,
                                    early_stopping_rounds=self.training_config.early_stopping_rounds,
-                                   verbose_eval=10,
+                                   verbose_eval=self.model_config.verbose,
                                    feval=self.evaluation_function)
         return self
 
