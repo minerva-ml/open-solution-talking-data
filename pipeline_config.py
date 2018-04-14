@@ -14,7 +14,7 @@ SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
 
     'feature_dispatcher': {'numerical_columns': [],
-                           'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
+                           'categorical_columns': ['app', 'device', 'os', 'channel'],
                            'timestamp_columns': ['click_time']
                            },
 
