@@ -8,7 +8,7 @@ metric:
   goal: maximize
 
 # Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -21,13 +21,13 @@ exclude:
 
 parameters:
 # Data
-  train_filepath: /mnt/ml-team/minerva/talking_data/files/train_sorted.csv
-  test_filepath: /mnt/ml-team/minerva/talking_data/data/test.csv
-  experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/baseline
+  train_filepath: /public/talking_data/data/train.csv
+  test_filepath:  /public/talking_data/data/test.csv
+  experiment_dir: /output/baseline
 
 # Execution
   overwrite: 1
-  num_workers: 24
+  num_workers: 8
   verbose: 0
   sort_data: 0
 
