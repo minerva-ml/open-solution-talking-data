@@ -4,11 +4,10 @@ import sys
 import os
 import math
 
+from attrdict import AttrDict
 import numpy as np
-from sklearn.externals import joblib
 import pandas as pd
 import yaml
-from attrdict import AttrDict
 
 
 def read_yaml(filepath):
@@ -79,25 +78,18 @@ def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort
     return meta_train_split, meta_valid_split
 
 
-def save_worst_predictions(experiment_dir, y_true, y_pred, raw_data, worst_n, eps=1e-15):
+def log_loss_row(y_true, y_pred, eps=1e-15):
     y_pred = np.clip(y_pred, eps, 1 - eps)
     scores = y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)
-    scores_df = pd.DataFrame({'score': scores})
+    return scores
 
-    worst_n_scores = scores_df.sort_values('score').iloc[:worst_n]
-    worst_n_indeces = list(worst_n_scores.index)
 
-    raw_data.reset_index(drop=True, inplace=True)
-    raw_data_worst = raw_data.iloc[worst_n_indeces]
+def save_evaluation_predictions(experiment_dir, y_true, y_pred, raw_data):
+    raw_data['y_pred'] = y_pred
+    raw_data['score'] = log_loss_row(y_true, y_pred)
 
-    y_pred_worst = y_pred[worst_n_indeces]
-    y_true_worst = y_true[worst_n_indeces]
+    raw_data.sort_values('score', ascending=False, inplace=True)
 
-    worst = {'scores': worst_n_scores.values,
-             'data': raw_data_worst,
-             'y_pred': y_pred_worst,
-             'y_true': y_true_worst
-             }
+    filepath = os.path.join(experiment_dir, 'evaluation_predictions.csv')
+    raw_data.to_csv(filepath, index=None)
 
-    filepath = os.path.join(experiment_dir, 'worst_predictions.pkl')
-    joblib.dump(worst, filepath)
