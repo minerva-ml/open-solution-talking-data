@@ -38,7 +38,7 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
 
     logger.info('reading data in')
     if dev_mode:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
+        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e5))
     else:
         meta_train = pd.read_csv(params.train_filepath, nrows=int(read_n_rows))
 
