@@ -1,10 +1,11 @@
+from itertools import product
 import logging
 import random
 import sys
 import os
-import math
 
 from attrdict import AttrDict
+import glob
 import numpy as np
 import pandas as pd
 import yaml
@@ -67,17 +68,6 @@ def set_seed(seed):
     np.random.seed(seed)
 
 
-def train_valid_split_on_timestamp(meta, validation_size, timestamp_column, sort=True):
-    n_rows = len(meta)
-    train_size = n_rows - math.floor(n_rows * validation_size)
-    if sort:
-        meta.sort_values(timestamp_column, inplace=True)
-    meta_train_split = meta.iloc[:train_size]
-    meta_valid_split = meta.iloc[train_size:]
-
-    return meta_train_split, meta_valid_split
-
-
 def log_loss_row(y_true, y_pred, eps=1e-15):
     y_pred = np.clip(y_pred, eps, 1 - eps)
     scores = y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)
@@ -93,3 +83,18 @@ def save_evaluation_predictions(experiment_dir, y_true, y_pred, raw_data):
     filepath = os.path.join(experiment_dir, 'evaluation_predictions.csv')
     raw_data.to_csv(filepath, index=None)
 
+
+def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
+    filepaths = []
+    for day, hour in product(days, hours):
+        filepaths.extend(glob.glob('{}/train_day{}_hour{}.csv'.format(chunks_dir, day, hour)))
+    data_chunks = []
+    for filepath in filepaths:
+        if logger is not None:
+            logger.info('reading in {}'.format(filepath))
+        else:
+            print('reading in {}'.format(filepath))
+        data_chunk = pd.read_csv(filepath)
+        data_chunks.append(data_chunk)
+    data_chunks = pd.concat(data_chunks, axis=0)
+    return data_chunks

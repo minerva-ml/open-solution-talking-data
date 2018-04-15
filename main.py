@@ -6,10 +6,10 @@ import pandas as pd
 from deepsense import neptune
 from sklearn.metrics import roc_auc_score
 
-from pipeline_config import SOLUTION_CONFIG, FEATURE_COLUMNS, TARGET_COLUMNS, CV_COLUMNS
+import pipeline_config as cfg
 from pipelines import PIPELINES
-from utils import init_logger, read_params, create_submission, set_seed, train_valid_split_on_timestamp, \
-    save_evaluation_predictions
+from utils import init_logger, read_params, create_submission, set_seed, \
+    save_evaluation_predictions, read_csv_time_chunks
 
 set_seed(1234)
 logger = init_logger()
@@ -23,28 +23,44 @@ def action():
 
 
 @action.command()
+def prepare_data():
+    train = pd.read_csv(params.raw_train_filepath)
+    train['click_time'] = pd.to_datetime(train['click_time'], format='%Y-%m-%d %H:%M:%S')
+    times = pd.DatetimeIndex(train['click_time'])
+    grouped_train = train.groupby([times.day, times.hour])
+    for (day, hour), train_chunk in grouped_train:
+        chunk_filename = 'train_day{}_hour{}.csv'.format(day, hour)
+        logger.info('saving {}'.format(chunk_filename))
+        chunk_filepath = os.path.join(params.train_chunks_dir, chunk_filename)
+        train_chunk.to_csv(chunk_filepath, index=None)
+
+
+@action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
-              required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def train(pipeline_name, validation_size, read_n_rows, dev_mode):
-    _train(pipeline_name, validation_size, read_n_rows, dev_mode)
+def train(pipeline_name, dev_mode):
+    _train(pipeline_name, dev_mode)
 
 
-def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
+def _train(pipeline_name, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
     logger.info('reading data in')
     if dev_mode:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e5))
+        TRAIN_DAYS, TRAIN_HOURS = cfg.DEV_TRAIN_DAYS, cfg.DEV_TRAIN_HOURS
+        VALID_DAYS, VALID_HOURS = cfg.DEV_VALID_DAYS, cfg.DEV_VALID_HOURS
     else:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(read_n_rows))
+        TRAIN_DAYS, TRAIN_HOURS = eval(params.train_days), eval(params.train_hours)
+        VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
-    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
-                                                                        sort=params.sort_data,
-                                                                        timestamp_column=CV_COLUMNS)
+    meta_train_split = read_csv_time_chunks(params.train_chunks_dir,
+                                            days=TRAIN_DAYS, hours=TRAIN_HOURS,
+                                            logger=logger)
+    meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
+                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            logger=logger)
+
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -52,14 +68,14 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
     meta_train_split = meta_train_split.sample(frac=1)
     meta_valid_split = meta_valid_split.sample(frac=1)
 
-    data = {'input': {'X': meta_train_split[FEATURE_COLUMNS],
-                      'y': meta_train_split[TARGET_COLUMNS],
-                      'X_valid': meta_valid_split[FEATURE_COLUMNS],
-                      'y_valid': meta_valid_split[TARGET_COLUMNS],
+    data = {'input': {'X': meta_train_split[cfg.FEATURE_COLUMNS],
+                      'y': meta_train_split[cfg.TARGET_COLUMNS],
+                      'X_valid': meta_valid_split[cfg.FEATURE_COLUMNS],
+                      'y_valid': meta_valid_split[cfg.TARGET_COLUMNS],
                       },
             }
 
-    pipeline = PIPELINES[pipeline_name]['train'](SOLUTION_CONFIG)
+    pipeline = PIPELINES[pipeline_name]['train'](cfg.SOLUTION_CONFIG)
     pipeline.clean_cache()
     pipeline.fit_transform(data)
     pipeline.clean_cache()
@@ -67,34 +83,31 @@ def _train(pipeline_name, validation_size, read_n_rows, dev_mode):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
-              required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
-    _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+def evaluate(pipeline_name, dev_mode):
+    _evaluate(pipeline_name, dev_mode)
 
 
-def _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
+def _evaluate(pipeline_name, dev_mode):
     logger.info('reading data in')
     if dev_mode:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(10e6))
+        VALID_DAYS, VALID_HOURS = cfg.DEV_VALID_DAYS, cfg.DEV_VALID_HOURS
     else:
-        meta_train = pd.read_csv(params.train_filepath, nrows=int(read_n_rows))
+        VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
-    meta_train_split, meta_valid_split = train_valid_split_on_timestamp(meta_train, validation_size,
-                                                                        sort=params.sort_data,
-                                                                        timestamp_column=CV_COLUMNS)
+    meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
+                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            logger=logger)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
-    data = {'input': {'X': meta_valid_split[FEATURE_COLUMNS],
+    data = {'input': {'X': meta_valid_split[cfg.FEATURE_COLUMNS],
                       'y': None,
                       },
             }
-    y_true = meta_valid_split[TARGET_COLUMNS].values.reshape(-1)
+    y_true = meta_valid_split[cfg.TARGET_COLUMNS].values.reshape(-1)
 
-    pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline = PIPELINES[pipeline_name]['inference'](cfg.SOLUTION_CONFIG)
     pipeline.clean_cache()
     output = pipeline.transform(data)
     pipeline.clean_cache()
@@ -128,12 +141,12 @@ def _predict(pipeline_name, dev_mode):
     else:
         meta_test = pd.read_csv(params.test_filepath)
 
-    data = {'input': {'X': meta_test[FEATURE_COLUMNS],
+    data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
                       'y': None,
                       },
             }
 
-    pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline = PIPELINES[pipeline_name]['inference'](cfg.SOLUTION_CONFIG)
     pipeline.clean_cache()
     output = pipeline.transform(data)
     pipeline.clean_cache()
@@ -155,7 +168,7 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
                           },
                 }
 
-        pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+        pipeline = PIPELINES[pipeline_name]['inference'](cfg.SOLUTION_CONFIG)
         pipeline.clean_cache()
         output = pipeline.transform(data)
         pipeline.clean_cache()
@@ -177,17 +190,14 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
-              required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
-def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chunk_size):
+def train_evaluate_predict(pipeline_name, dev_mode, chunk_size):
     logger.info('training')
-    _train(pipeline_name, validation_size, read_n_rows, dev_mode)
+    _train(pipeline_name, dev_mode)
     logger.info('evaluate')
-    _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+    _evaluate(pipeline_name, dev_mode)
     logger.info('predicting')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
@@ -197,15 +207,12 @@ def train_evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
-              required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
-def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chunk_size):
+def evaluate_predict(pipeline_name, dev_mode, chunk_size):
     logger.info('evaluate')
-    _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+    _evaluate(pipeline_name, dev_mode)
     logger.info('predicting')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
@@ -215,15 +222,12 @@ def evaluate_predict(pipeline_name, validation_size, read_n_rows, dev_mode, chun
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.15,
-              required=False)
-@click.option('-n', '--read_n_rows', help='read last n rows of data', default=40e7, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def train_evaluate(pipeline_name, validation_size, read_n_rows, dev_mode):
+def train_evaluate(pipeline_name, dev_mode):
     logger.info('training')
-    _train(pipeline_name, validation_size, read_n_rows, dev_mode)
+    _train(pipeline_name, dev_mode)
     logger.info('evaluate')
-    _evaluate(pipeline_name, validation_size, read_n_rows, dev_mode)
+    _evaluate(pipeline_name, dev_mode)
 
 
 if __name__ == "__main__":

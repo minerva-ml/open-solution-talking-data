@@ -10,6 +10,12 @@ FEATURE_COLUMNS = ['ip', 'app', 'device', 'os', 'channel', 'click_time']
 TARGET_COLUMNS = ['is_attributed']
 CV_COLUMNS = ['click_time']
 
+DEV_TRAIN_DAYS = [8]
+DEV_TRAIN_HOURS = [4]
+DEV_VALID_DAYS = [9]
+DEV_VALID_HOURS = [4]
+
+
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
 
