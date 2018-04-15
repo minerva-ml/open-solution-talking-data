@@ -84,6 +84,20 @@ def save_evaluation_predictions(experiment_dir, y_true, y_pred, raw_data):
     raw_data.to_csv(filepath, index=None)
 
 
+def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, logger=None):
+    data[timestamp_column] = pd.to_datetime(data[timestamp_column], format='%Y-%m-%d %H:%M:%S')
+    times = pd.DatetimeIndex(data[timestamp_column])
+    grouped_train = data.groupby([times.day, times.hour])
+    for (day, hour), train_chunk in grouped_train:
+        chunk_filename = 'train_day{}_hour{}.csv'.format(day, hour)
+        if logger is not None:
+            logger.info('saving {}'.format(chunk_filename))
+        else:
+            print('saving {}'.format(chunk_filename))
+        chunk_filepath = os.path.join(chunks_dir, chunk_filename)
+        train_chunk.to_csv(chunk_filepath, index=None)
+
+
 def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
     filepaths = []
     for day, hour in product(days, hours):

@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 import pipeline_config as cfg
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, \
-    save_evaluation_predictions, read_csv_time_chunks
+    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks
 
 set_seed(1234)
 logger = init_logger()
@@ -25,14 +25,10 @@ def action():
 @action.command()
 def prepare_data():
     train = pd.read_csv(params.raw_train_filepath)
-    train['click_time'] = pd.to_datetime(train['click_time'], format='%Y-%m-%d %H:%M:%S')
-    times = pd.DatetimeIndex(train['click_time'])
-    grouped_train = train.groupby([times.day, times.hour])
-    for (day, hour), train_chunk in grouped_train:
-        chunk_filename = 'train_day{}_hour{}.csv'.format(day, hour)
-        logger.info('saving {}'.format(chunk_filename))
-        chunk_filepath = os.path.join(params.train_chunks_dir, chunk_filename)
-        train_chunk.to_csv(chunk_filepath, index=None)
+    cut_data_in_time_chunks(train,
+                            timestamp_column='click_time',
+                            chunks_dir=params.train_chunks_dir,
+                            logger=logger)
 
 
 @action.command()
