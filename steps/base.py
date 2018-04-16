@@ -53,7 +53,10 @@ class Step:
         self.save_dirpath_outputs = os.path.join(cache_dirpath, 'outputs')
         self.save_dirpath_tmp = os.path.join(cache_dirpath, 'tmp')
 
-        self.cache_filepath_step_transformer = os.path.join(self.cache_dirpath_transformers, self.name)
+        if isinstance(self.transformer, Step):
+            self.cache_filepath_step_transformer = self.transformer.cache_filepath_step_transformer
+        else:
+            self.cache_filepath_step_transformer = os.path.join(self.cache_dirpath_transformers, self.name)
         self.save_filepath_step_output = os.path.join(self.save_dirpath_outputs, '{}'.format(self.name))
         self.save_filepath_step_tmp = os.path.join(self.save_dirpath_tmp, '{}'.format(self.name))
 
