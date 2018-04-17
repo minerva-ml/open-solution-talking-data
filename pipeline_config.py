@@ -9,22 +9,28 @@ params = read_params(ctx)
 FEATURE_COLUMNS = ['ip', 'app', 'device', 'os', 'channel', 'click_time']
 TARGET_COLUMNS = ['is_attributed']
 CV_COLUMNS = ['click_time']
+ID_COLUMN = ['click_id']
 
 DEV_TRAIN_DAYS = [8]
 DEV_TRAIN_HOURS = [4]
 DEV_VALID_DAYS = [9]
 DEV_VALID_HOURS = [4]
-DEV_SAMPLE_SIZE = int(10e6)
+DEV_SAMPLE_SIZE = int(10e4)
 
-COLUMN_TYPES = {
-    'ip': 'uint32',
-    'app': 'uint16',
-    'device': 'uint16',
-    'os': 'uint16',
-    'channel': 'uint16',
-    'is_attributed': 'uint8',
-    'click_id': 'uint32',
-}
+COLUMN_TYPES = {'train': {'ip': 'uint32',
+                          'app': 'uint16',
+                          'device': 'uint16',
+                          'os': 'uint16',
+                          'channel': 'uint16',
+                          'is_attributed': 'uint8',
+                          },
+                'inference': {'ip': 'uint32',
+                              'app': 'uint16',
+                              'device': 'uint16',
+                              'os': 'uint16',
+                              'channel': 'uint16',
+                              'click_id': 'uint32'}
+                }
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},

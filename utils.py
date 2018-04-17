@@ -8,6 +8,7 @@ from attrdict import AttrDict
 import glob
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 import yaml
 
 
@@ -103,12 +104,12 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None
     for day, hour in product(days, hours):
         filepaths.extend(glob.glob('{}/train_day{}_hour{}.csv'.format(chunks_dir, day, hour)))
     data_chunks = []
-    for filepath in filepaths:
-        if logger is not None:
-            logger.info('reading in {}'.format(filepath))
-        else:
-            print('reading in {}'.format(filepath))
+    for filepath in tqdm(filepaths):
         data_chunk = pd.read_csv(filepath, usecols=usecols, dtype=dtype)
+        if logger is not None:
+            logger.info('read in {} of shape {}'.format(filepath, data_chunk.shape))
+        else:
+            print('read in {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0)
     return data_chunks
