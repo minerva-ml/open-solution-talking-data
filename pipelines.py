@@ -14,7 +14,7 @@ def baseline(config, train_mode=True):
                          input_steps=[feature_dispatcher, feature_dispatcher_valid],
                          adapter={'X': ([(feature_dispatcher.name, 'categorical_features')]),
                                   'y': ([('input', 'y')], to_numpy_label),
-                                  'feature_names': ([(feature_dispatcher.name, 'feature_names')]),
+                                  'feature_names': ([(feature_dispatcher.name, 'categorical_feature_names')]),
                                   'categorical_features': ([(feature_dispatcher.name, 'categorical_feature_names')]),
                                   'X_valid': ([(feature_dispatcher_valid.name, 'categorical_features')]),
                                   'y_valid': ([('input', 'y_valid')], to_numpy_label),
