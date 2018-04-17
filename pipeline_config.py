@@ -14,7 +14,17 @@ DEV_TRAIN_DAYS = [8]
 DEV_TRAIN_HOURS = [4]
 DEV_VALID_DAYS = [9]
 DEV_VALID_HOURS = [4]
+DEV_SAMPLE_SIZE = int(10e6)
 
+COLUMN_TYPES = {
+    'ip': 'uint32',
+    'app': 'uint16',
+    'device': 'uint16',
+    'os': 'uint16',
+    'channel': 'uint16',
+    'is_attributed': 'uint8',
+    'click_id': 'uint32',
+}
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},

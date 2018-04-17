@@ -52,10 +52,18 @@ def _train(pipeline_name, dev_mode):
 
     meta_train_split = read_csv_time_chunks(params.train_chunks_dir,
                                             days=TRAIN_DAYS, hours=TRAIN_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES,
                                             logger=logger)
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
                                             days=VALID_DAYS, hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES,
                                             logger=logger)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_SIZE)
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE)
 
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
@@ -93,7 +101,12 @@ def _evaluate(pipeline_name, dev_mode):
 
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
                                             days=VALID_DAYS, hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES,
                                             logger=logger)
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -133,9 +146,10 @@ def predict(pipeline_name, dev_mode, chunk_size):
 def _predict(pipeline_name, dev_mode):
     logger.info('reading data in')
     if dev_mode:
-        meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
+        meta_test = pd.read_csv(params.test_filepath, usecols=cfg.FEATURE_COLUMNS, dtype=cfg.COLUMN_TYPES,
+                                nrows=cfg.DEV_SAMPLE_SIZE)
     else:
-        meta_test = pd.read_csv(params.test_filepath)
+        meta_test = pd.read_csv(params.test_filepath, usecols=cfg.FEATURE_COLUMNS, dtype=cfg.COLUMN_TYPES)
 
     data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
                       'y': None,
