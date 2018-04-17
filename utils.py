@@ -110,5 +110,6 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
             print('reading in {}'.format(filepath))
         data_chunk = pd.read_csv(filepath)
         data_chunks.append(data_chunk)
-    data_chunks = pd.concat(data_chunks, axis=0)
+    data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
+    print('combined dataset shape: {}'.format(data_chunks.shape))
     return data_chunks

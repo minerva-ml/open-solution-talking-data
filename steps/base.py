@@ -280,6 +280,10 @@ def to_tuple_inputs(inputs):
     return tuple(inputs)
 
 
+def to_list_inputs(inputs):
+    return inputs
+
+
 def identity_inputs(inputs):
     return inputs[0]
 

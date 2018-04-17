@@ -11,18 +11,24 @@ TARGET_COLUMNS = ['is_attributed']
 CV_COLUMNS = ['click_time']
 
 DEV_TRAIN_DAYS = [8]
-DEV_TRAIN_HOURS = [4]
+DEV_TRAIN_HOURS = [4, 5]
 DEV_VALID_DAYS = [9]
 DEV_VALID_HOURS = [4]
-
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
 
     'feature_dispatcher': {'numerical_columns': [],
                            'categorical_columns': ['app', 'device', 'os', 'channel'],
-                           'timestamp_columns': ['click_time']
+                           'timestamp_columns': ['click_time'],
+                           'return_df': params.feature_dispatcher__return_df
                            },
+
+    'feature_joiner': {'return_df': params.feature_joiner__return_df
+                       },
+
+    'target_encoder': {'min_samples_leaf': params.target_encoder__min_samples_leaf,
+                       'smoothing': params.target_encoder__smoothing},
 
     'light_gbm': {'model_config': {'boosting_type': params.lgbm__boosting_type,
                                    'objective': params.lgbm__objective,
