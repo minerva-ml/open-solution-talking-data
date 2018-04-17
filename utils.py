@@ -107,9 +107,9 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None
     for filepath in tqdm(filepaths):
         data_chunk = pd.read_csv(filepath, usecols=usecols, dtype=dtype)
         if logger is not None:
-            logger.info('read in {} of shape {}'.format(filepath, data_chunk.shape))
+            logger.info('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         else:
-            print('read in {} of shape {}'.format(filepath, data_chunk.shape))
+            print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0)
     return data_chunks
