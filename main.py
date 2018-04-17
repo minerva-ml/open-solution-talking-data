@@ -51,12 +51,14 @@ def _train(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_train_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=TRAIN_DAYS, hours=TRAIN_HOURS,
+                                            days=TRAIN_DAYS,
+                                            hours=TRAIN_HOURS,
                                             usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
                                             dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
                                             usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
                                             dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
@@ -100,7 +102,8 @@ def _evaluate(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
                                             usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
                                             dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
