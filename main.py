@@ -60,13 +60,9 @@ def _train(pipeline_name, dev_mode):
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
-    if dev_mode:
-        meta_train_split = meta_train_split.sample(100000)
-        meta_valid_split = meta_valid_split.sample(100000)
-    else:
-        logger.info('shuffling data')
-        meta_train_split = meta_train_split.sample(frac=1)
-        meta_valid_split = meta_valid_split.sample(frac=1)
+    logger.info('shuffling data')
+    meta_train_split = meta_train_split.sample(frac=1)
+    meta_valid_split = meta_valid_split.sample(frac=1)
 
     data = {'input': {'X': meta_train_split[cfg.FEATURE_COLUMNS],
                       'y': meta_train_split[cfg.TARGET_COLUMNS],
