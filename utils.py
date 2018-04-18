@@ -5,6 +5,7 @@ import sys
 import os
 
 from attrdict import AttrDict
+from deepsense import neptune
 import glob
 import numpy as np
 import pandas as pd
@@ -114,3 +115,38 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
     return data_chunks
 
 
+def data_hash_channel_send(ctx, name, data):
+    hash_channel = ctx.create_channel(name=name, channel_type=neptune.ChannelType.TEXT)
+    data_hash = create_data_hash(data)
+    hash_channel.send(y=data_hash)
+
+
+def create_data_hash(data):
+    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
+        data_hash = make_pandas_hash(data)
+    else:
+        raise NotImplementedError('only pandas.DataFrame and pandas.Series are supported')
+    return str(data_hash)
+
+
+def make_pandas_hash(item):
+    if isinstance(item, pd.DataFrame):
+        index = tuple(item.index)
+        columns = tuple(item.columns)
+        values = tuple(tuple(x) for x in item.values)
+        item = tuple([index, columns, values])
+    elif isinstance(item, pd.Series):
+        index = tuple(item.index)
+        values = tuple(tuple(x) for x in item.values)
+        item = tuple([index, values])
+
+    try:
+        return hash(item)
+    except TypeError:
+        try:
+            # this might act funny if a thing is convertible to tuple but the tuple
+            # is not a proper representation for the item (like for a frame :-()
+            return hash(tuple(item))
+        except TypeError as e:
+            print("Unhashable type: %s, %s" % (item, [type(t) for t in tuple(item)]))
+            raise e

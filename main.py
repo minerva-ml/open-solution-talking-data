@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 import pipeline_config as cfg
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, \
-    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks
+    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks, data_hash_channel_send
 
 set_seed(1234)
 logger = init_logger()
@@ -57,6 +57,9 @@ def _train(pipeline_name, dev_mode):
                                             days=VALID_DAYS, hours=VALID_HOURS,
                                             logger=logger)
 
+    data_hash_channel_send(ctx, 'Training Data Hash', meta_train_split)
+    data_hash_channel_send(ctx, 'Validation Data Hash', meta_valid_split)
+
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -94,6 +97,8 @@ def _evaluate(pipeline_name, dev_mode):
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
                                             days=VALID_DAYS, hours=VALID_HOURS,
                                             logger=logger)
+
+    data_hash_channel_send(ctx, 'Evaluation Data Hash', meta_valid_split)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -136,6 +141,8 @@ def _predict(pipeline_name, dev_mode):
         meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
     else:
         meta_test = pd.read_csv(params.test_filepath)
+
+    data_hash_channel_send(ctx, 'Test Data Hash', meta_test)
 
     data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
                       'y': None,
