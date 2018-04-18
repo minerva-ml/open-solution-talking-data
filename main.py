@@ -51,14 +51,24 @@ def _train(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_train_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=TRAIN_DAYS, hours=TRAIN_HOURS,
+                                            days=TRAIN_DAYS,
+                                            hours=TRAIN_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
 
     data_hash_channel_send(ctx, 'Training Data Hash', meta_train_split)
     data_hash_channel_send(ctx, 'Validation Data Hash', meta_valid_split)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
 
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
@@ -95,10 +105,16 @@ def _evaluate(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
 
     data_hash_channel_send(ctx, 'Evaluation Data Hash', meta_valid_split)
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -138,9 +154,14 @@ def predict(pipeline_name, dev_mode, chunk_size):
 def _predict(pipeline_name, dev_mode):
     logger.info('reading data in')
     if dev_mode:
-        meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
+        meta_test = pd.read_csv(params.test_filepath,
+                                usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                                dtype=cfg.COLUMN_TYPES['inference'],
+                                nrows=cfg.DEV_SAMPLE_SIZE)
     else:
-        meta_test = pd.read_csv(params.test_filepath)
+        meta_test = pd.read_csv(params.test_filepath,
+                                usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                                dtype=cfg.COLUMN_TYPES['inference'])
 
     data_hash_channel_send(ctx, 'Test Data Hash', meta_test)
 
