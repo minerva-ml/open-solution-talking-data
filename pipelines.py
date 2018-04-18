@@ -1,8 +1,9 @@
 from functools import partial
 
-from steps.base import Step, Dummy, to_list_inputs
 from feature_extraction import FeatureDispatcher, FeatureJoiner, TargetEncoder, BinaryEncoder
+from steps.base import Step, Dummy, to_list_inputs
 from steps.misc import LightGBM
+from utils import to_numpy_label
 
 
 def baseline(config, train_mode=True):
@@ -309,7 +310,7 @@ def _join_features(numerical_features, numerical_features_valid,
                               input_steps=numerical_features + categorical_features,
                               adapter={
                                   'numerical_feature_list': (
-                                  [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
+                                      [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
                                   'categorical_feature_list': (
                                       [(feature.name, 'X') for feature in categorical_features], to_list_inputs),
                               },
@@ -317,10 +318,6 @@ def _join_features(numerical_features, numerical_features_valid,
                               save_output=save_output)
 
         return feature_joiner
-
-
-def to_numpy_label(inputs):
-    return inputs[0].values.reshape(-1)
 
 
 PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),

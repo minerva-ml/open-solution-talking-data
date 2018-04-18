@@ -1,15 +1,15 @@
-from itertools import product
+import glob
 import logging
+import numpy as np
+import os
 import random
 import sys
-import os
+from itertools import product
 
-from attrdict import AttrDict
-import glob
-import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import yaml
+from attrdict import AttrDict
+from tqdm import tqdm
 
 
 def read_yaml(filepath):
@@ -112,5 +112,12 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None
             print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
-    print('combined dataset shape: {}'.format(data_chunks.shape))
+    if logger is not None:
+        logger.info('combined dataset shape: {}'.format(data_chunks.shape))
+    else:
+        print('combined dataset shape: {}'.format(data_chunks.shape))
     return data_chunks
+
+
+def to_numpy_label(inputs):
+    return inputs[0].values.reshape(-1)

@@ -1,6 +1,6 @@
 import category_encoders as ce
-from sklearn.externals import joblib
 import pandas as pd
+from sklearn.externals import joblib
 
 from steps.base import BaseTransformer
 from steps.utils import get_logger
