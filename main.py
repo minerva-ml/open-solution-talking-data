@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 import pipeline_config as cfg
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, \
-    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks
+    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks, data_hash_channel_send
 
 set_seed(1234)
 logger = init_logger()
@@ -63,6 +63,9 @@ def _train(pipeline_name, dev_mode):
                                             dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
 
+    data_hash_channel_send(ctx, 'Training Data Hash', meta_train_split)
+    data_hash_channel_send(ctx, 'Validation Data Hash', meta_valid_split)
+
     if dev_mode:
         meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
         meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
@@ -107,6 +110,8 @@ def _evaluate(pipeline_name, dev_mode):
                                             usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
                                             dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
+
+    data_hash_channel_send(ctx, 'Evaluation Data Hash', meta_valid_split)
 
     if dev_mode:
         meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
@@ -157,6 +162,8 @@ def _predict(pipeline_name, dev_mode):
         meta_test = pd.read_csv(params.test_filepath,
                                 usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
                                 dtype=cfg.COLUMN_TYPES['inference'])
+
+    data_hash_channel_send(ctx, 'Test Data Hash', meta_test)
 
     data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
                       'y': None,
