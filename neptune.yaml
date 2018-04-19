@@ -18,6 +18,7 @@ exclude:
   - .git
   - .idea
   - .ipynb_checkpoints
+  - notebooks
 
 parameters:
 # Data
