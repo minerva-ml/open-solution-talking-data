@@ -113,3 +113,11 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
     data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
     print('combined dataset shape: {}'.format(data_chunks.shape))
     return data_chunks
+
+
+def to_numpy_label(inputs):
+    return inputs[0].values.reshape(-1)
+
+
+def to_list_inputs(inputs):
+    return inputs

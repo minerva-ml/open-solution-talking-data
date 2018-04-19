@@ -1,8 +1,9 @@
 from functools import partial
 
-from steps.base import Step, Dummy, to_list_inputs
-from feature_extraction import FeatureDispatcher, FeatureJoiner, TargetEncoder, BinaryEncoder
+from steps.base import Step, Dummy
 from steps.misc import LightGBM
+from feature_extraction import FeatureDispatcher, FeatureJoiner, TargetEncoder, BinaryEncoder
+from utils import to_list_inputs, to_numpy_label
 
 
 def baseline(config, train_mode=True):
@@ -278,50 +279,48 @@ def _join_features(numerical_features, numerical_features_valid,
                    config, train_mode=False, save_output=False):
     if train_mode:
         feature_joiner = Step(name='feature_joiner',
-                              transformer=FeatureJoiner(**config.feature_joiner),
-                              input_steps=numerical_features + categorical_features,
-                              adapter={
-                                  'numerical_feature_list': (
-                                  [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
-                                  'categorical_feature_list': (
-                                      [(feature.name, 'X') for feature in categorical_features], to_list_inputs),
-                              },
-                              cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
 
-        feature_joiner_valid = Step(name='feature_joiner_valid',
-                                    transformer=feature_joiner,
-                                    input_steps=numerical_features_valid + categorical_features_valid,
-                                    adapter={'numerical_feature_list': (
-                                        [(feature.name, 'X') for feature in numerical_features_valid], to_list_inputs),
-                                        'categorical_feature_list': (
-                                            [(feature.name, 'X') for feature in categorical_features_valid],
-                                            to_list_inputs),
-                                    },
-                                    cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+        def to_list_inputs(inputs):
+    return inputstransformer=FeatureJoiner(**config.feature_joiner),
+    input_steps = numerical_features + categorical_features,
+    adapter = {
+                  'numerical_feature_list': (
+                      [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
+                  'categorical_feature_list': (
+                      [(feature.name, 'X') for feature in categorical_features], to_list_inputs),
+              },
+    cache_dirpath = config.env.cache_dirpath,
+    save_output = save_output)
 
-        return feature_joiner, feature_joiner_valid
-
-    else:
-        feature_joiner = Step(name='feature_joiner',
-                              transformer=FeatureJoiner(**config.feature_joiner),
-                              input_steps=numerical_features + categorical_features,
-                              adapter={
-                                  'numerical_feature_list': (
-                                  [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
-                                  'categorical_feature_list': (
-                                      [(feature.name, 'X') for feature in categorical_features], to_list_inputs),
-                              },
-                              cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
-
-        return feature_joiner
+    feature_joiner_valid = Step(name='feature_joiner_valid',
+    transformer = feature_joiner,
+    input_steps = numerical_features_valid + categorical_features_valid,
+    adapter = {'numerical_feature_list': (
+        [(feature.name, 'X') for feature in numerical_features_valid], to_list_inputs),
+                  'categorical_feature_list': (
+                      [(feature.name, 'X') for feature in categorical_features_valid],
+                      to_list_inputs),
+              },
+    cache_dirpath = config.env.cache_dirpath,
+    save_output = save_output)
 
 
-def to_numpy_label(inputs):
-    return inputs[0].values.reshape(-1)
+return feature_joiner, feature_joiner_valid
 
+else:
+feature_joiner = Step(name='feature_joiner',
+                      transformer=FeatureJoiner(**config.feature_joiner),
+                      input_steps=numerical_features + categorical_features,
+                      adapter={
+                          'numerical_feature_list': (
+                              [(feature.name, 'X') for feature in numerical_features], to_list_inputs),
+                          'categorical_feature_list': (
+                              [(feature.name, 'X') for feature in categorical_features], to_list_inputs),
+                      },
+                      cache_dirpath=config.env.cache_dirpath,
+                      save_output=save_output)
+
+return feature_joiner
 
 PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),
                           'inference': partial(baseline, train_mode=False)},
