@@ -18,6 +18,7 @@ exclude:
   - .git
   - .idea
   - .ipynb_checkpoints
+  - notebooks
 
 parameters:
 # Data
@@ -33,8 +34,13 @@ parameters:
 # Execution
   overwrite: 1
   num_workers: 8
-  verbose: 0
-  sort_data: 0
+  verbose: 1
+
+# Preprocessing
+  feature_dispatcher__return_df: 1
+  target_encoder__min_samples_leaf: 5
+  target_encoder__smoothing: 1
+  feature_joiner__return_df: 1
 
 # Light GBM
   lgbm__boosting_type: 'gbdt'

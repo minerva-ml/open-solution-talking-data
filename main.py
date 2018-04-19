@@ -211,11 +211,11 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
 def train_evaluate_predict(pipeline_name, dev_mode, chunk_size):
-    logger.info('training')
+    logger.info('TRAINING')
     _train(pipeline_name, dev_mode)
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
-    logger.info('predicting')
+    logger.info('PREDICTION')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
     else:
@@ -228,9 +228,9 @@ def train_evaluate_predict(pipeline_name, dev_mode, chunk_size):
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
 def evaluate_predict(pipeline_name, dev_mode, chunk_size):
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
-    logger.info('predicting')
+    logger.info('PREDICTION')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
     else:
@@ -241,9 +241,9 @@ def evaluate_predict(pipeline_name, dev_mode, chunk_size):
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 def train_evaluate(pipeline_name, dev_mode):
-    logger.info('training')
+    logger.info('TRAINING')
     _train(pipeline_name, dev_mode)
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
 
 
