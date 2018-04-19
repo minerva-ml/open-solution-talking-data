@@ -9,6 +9,7 @@ from deepsense import neptune
 import glob
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 import yaml
 
 
@@ -99,17 +100,17 @@ def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, logger=None):
         train_chunk.to_csv(chunk_filepath, index=None)
 
 
-def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
+def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None, logger=None):
     filepaths = []
     for day, hour in product(days, hours):
         filepaths.extend(glob.glob('{}/train_day{}_hour{}.csv'.format(chunks_dir, day, hour)))
     data_chunks = []
-    for filepath in filepaths:
+    for filepath in tqdm(filepaths):
+        data_chunk = pd.read_csv(filepath, usecols=usecols, dtype=dtype)
         if logger is not None:
-            logger.info('reading in {}'.format(filepath))
+            logger.info('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         else:
-            print('reading in {}'.format(filepath))
-        data_chunk = pd.read_csv(filepath)
+            print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0)
     return data_chunks
