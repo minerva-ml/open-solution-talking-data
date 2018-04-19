@@ -57,14 +57,6 @@ def read_params(ctx):
     return params
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
-
-
-def sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
-
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -148,10 +140,8 @@ def make_pandas_hash(item):
             print("Unhashable type: %s, %s" % (item, [type(t) for t in tuple(item)]))
             raise e
 
-
-def to_numpy_label(inputs):
-    return inputs[0].values.reshape(-1)
-
-
-def to_list_inputs(inputs):
-    return inputs
+def safe_eval(obj):
+    try:
+        return eval(obj)
+    except Exception:
+        return obj

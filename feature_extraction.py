@@ -1,4 +1,5 @@
 import category_encoders as ce
+import numpy as np
 import pandas as pd
 from sklearn.externals import joblib
 
@@ -30,18 +31,13 @@ class DataFrameByTypeSplitter(BaseTransformer):
 
 
 class FeatureJoiner(BaseTransformer):
-    def __init__(self, return_df=True):
-        self.return_df = return_df
-
     def transform(self, numerical_feature_list, categorical_feature_list, **kwargs):
         outputs = {}
 
-        if self.return_df:
-            outputs['X'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
-            outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
-            outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
-        else:
-            raise NotImplementedError('only return_df=True is supported')
+        outputs['X'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
+        outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
+        outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
+
         return outputs
 
     def _get_feature_names(self, dataframes):
@@ -49,6 +45,44 @@ class FeatureJoiner(BaseTransformer):
         for dataframe in dataframes:
             feature_names.extend(list(dataframe.columns))
         return feature_names
+
+
+class CategoricalFilter(BaseTransformer):
+    def __init__(self, categorical_columns, min_frequencies, impute_value=np.nan):
+        self.categorical_columns = categorical_columns
+        self.min_frequencies = min_frequencies
+        self.impute_value = impute_value
+        self.category_levels_to_remove = {}
+
+    def fit(self, categorical_features):
+        for column, threshold in zip(self.categorical_columns, self.min_frequencies):
+            value_counts = categorical_features[column].value_counts()
+            self.category_levels_to_remove[column] = value_counts[value_counts <= threshold].index.tolist()
+        return self
+
+    def transform(self, categorical_features):
+        for column, levels_to_remove in self.category_levels_to_remove.items():
+            if levels_to_remove:
+                categorical_features[column].replace(levels_to_remove, self.impute_value, inplace=True)
+            categorical_features['{}_infrequent'.format(column)] = (
+                categorical_features[column] == self.impute_value).astype(int)
+        return {'categorical_features': categorical_features}
+
+    def load(self, filepath):
+        params = joblib.load(filepath)
+        self.categorical_columns = params['categorical_columns']
+        self.min_frequencies = params['min_frequencies']
+        self.impute_value = params['impute_value']
+        self.category_levels_to_remove = params['category_levels_to_remove']
+        return self
+
+    def save(self, filepath):
+        params = {}
+        params['categorical_columns'] = self.categorical_columns
+        params['min_frequencies'] = self.min_frequencies
+        params['impute_value'] = self.impute_value
+        params['category_levels_to_remove'] = self.category_levels_to_remove
+        joblib.dump(params, filepath)
 
 
 class BasicCategoricalEncoder(BaseTransformer):
