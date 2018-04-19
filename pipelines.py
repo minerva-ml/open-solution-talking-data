@@ -27,10 +27,10 @@ def baseline(config, train_mode):
 
 def solution_1(config, train_mode):
     if train_mode:
-        features, features_valid = feature_extraction_v1(config, train_mode)
+        features, features_valid = feature_extraction_v1(config, train_mode, save_output=True, load_saved_output=False)
         light_gbm = classifier_lgbm((features, features_valid), config, train_mode)
     else:
-        features = feature_extraction_v1(config, train_mode)
+        features = feature_extraction_v1(config, train_mode, save_output=False, load_saved_output=False)
         light_gbm = classifier_lgbm(features, train_mode)
 
     output = Step(name='output',
@@ -79,7 +79,7 @@ def feature_extraction_v0(config, train_mode):
         return feature_combiner
 
 
-def feature_extraction_v1(config, train_mode):
+def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = _get_feature_by_type_splits(config, train_mode)
         filtered_categorical, filtered_categorical_valid = _get_categorical_frequency_filters(
@@ -96,7 +96,9 @@ def feature_extraction_v1(config, train_mode):
                                                                                             binary_encoder_valid],
                                                                   categorical_features=[],
                                                                   categorical_features_valid=[],
-                                                                  config=config, train_mode=train_mode)
+                                                                  config=config, train_mode=train_mode,
+                                                                  save_output=save_output,
+                                                                  load_saved_output=load_saved_output)
         return feature_combiner, feature_combiner_valid
     else:
         feature_by_type_split = _get_feature_by_type_splits(config, train_mode)
@@ -111,7 +113,8 @@ def feature_extraction_v1(config, train_mode):
                                           numerical_features_valid=[],
                                           categorical_features=[],
                                           categorical_features_valid=[],
-                                          config=config, train_mode=train_mode)
+                                          config=config, train_mode=train_mode,
+                                          save_output=save_output)
     return feature_combiner
 
 
@@ -306,7 +309,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
 
 def _join_features(numerical_features, numerical_features_valid,
                    categorical_features, categorical_features_valid,
-                   config, train_mode=False, save_output=False):
+                   config, train_mode=False, save_output=False, load_saved_output=False):
     if train_mode:
         feature_joiner = Step(name='feature_joiner',
                               transformer=fe.FeatureJoiner(),
@@ -318,7 +321,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                       [(feature.name, 'X') for feature in categorical_features], identity_inputs),
                               },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              save_output=save_output, load_saved_output=load_saved_output)
 
         feature_joiner_valid = Step(name='feature_joiner_valid',
                                     transformer=feature_joiner,
@@ -330,7 +333,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                             identity_inputs),
                                     },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+                                    save_output=save_output, load_saved_output=load_saved_output)
 
         return feature_joiner, feature_joiner_valid
 

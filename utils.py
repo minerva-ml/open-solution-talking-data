@@ -1,4 +1,5 @@
 from itertools import product
+import hashlib
 import logging
 import random
 import sys
@@ -119,26 +120,12 @@ def data_hash_channel_send(ctx, name, data):
 
 
 def create_data_hash(data):
-    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
-        data_hash = make_pandas_hash(data)
+    if isinstance(data, pd.DataFrame):
+        data_hash = hashlib.sha256(data.to_json().encode()).hexdigest()
     else:
         raise NotImplementedError('only pandas.DataFrame and pandas.Series are supported')
     return str(data_hash)
 
-
-def make_pandas_hash(item):
-    if isinstance(item, pd.DataFrame) or isinstance(item, pd.Series):
-        item = item.to_json()
-    try:
-        return hash(item)
-    except TypeError:
-        try:
-            # this might act funny if a thing is convertible to tuple but the tuple
-            # is not a proper representation for the item (like for a frame :-()
-            return hash(tuple(item))
-        except TypeError as e:
-            print("Unhashable type: %s, %s" % (item, [type(t) for t in tuple(item)]))
-            raise e
 
 def safe_eval(obj):
     try:
