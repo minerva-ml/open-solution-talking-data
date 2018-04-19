@@ -130,16 +130,8 @@ def create_data_hash(data):
 
 
 def make_pandas_hash(item):
-    if isinstance(item, pd.DataFrame):
-        index = tuple(item.index)
-        columns = tuple(item.columns)
-        values = tuple(tuple(x) for x in item.values)
-        item = tuple([index, columns, values])
-    elif isinstance(item, pd.Series):
-        index = tuple(item.index)
-        values = tuple(tuple(x) for x in item.values)
-        item = tuple([index, values])
-
+    if isinstance(item, pd.DataFrame) or isinstance(item, pd.Series):
+        item = item.to_json()
     try:
         return hash(item)
     except TypeError:
