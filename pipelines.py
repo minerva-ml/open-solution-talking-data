@@ -27,11 +27,12 @@ def baseline(config, train_mode):
 
 def solution_1(config, train_mode):
     if train_mode:
-        features, features_valid = feature_extraction_v1(config, train_mode, save_output=True, load_saved_output=False)
+        features, features_valid = feature_extraction_v1(config, train_mode,
+                                                         save_output=True, cache_output=True, load_saved_output=False)
         light_gbm = classifier_lgbm((features, features_valid), config, train_mode)
     else:
-        features = feature_extraction_v1(config, train_mode, save_output=False, load_saved_output=False)
-        light_gbm = classifier_lgbm(features, train_mode)
+        features = feature_extraction_v1(config, train_mode, cache_output=True)
+        light_gbm = classifier_lgbm(features, config, train_mode)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -42,9 +43,10 @@ def solution_1(config, train_mode):
     return output
 
 
-def feature_extraction_v0(config, train_mode):
+def feature_extraction_v0(config, train_mode, **kwargs):
     if train_mode:
-        feature_by_type_split, feature_by_type_split_valid = _get_feature_by_type_splits(config, train_mode)
+        (feature_by_type_split,
+         feature_by_type_split_valid) = _feature_by_type_splits(config, train_mode)
         categorical_features = Step(name='categorical_features',
                                     transformer=Dummy(),
                                     input_steps=[feature_by_type_split],
@@ -57,64 +59,79 @@ def feature_extraction_v0(config, train_mode):
                                           adapter={'X': ([(feature_by_type_split_valid.name, 'categorical_features')]),
                                                    },
                                           cache_dirpath=config.env.cache_dirpath)
-        feature_combiner = _join_features(numerical_features=[],
+        feature_combiner = _features_join(numerical_features=[],
                                           numerical_features_valid=[],
                                           categorical_features=[categorical_features],
                                           categorical_features_valid=[categorical_features_valid],
-                                          config=config, train_mode=train_mode)
+                                          config=config, train_mode=train_mode,
+                                          **kwargs)
         return feature_combiner
     else:
-        feature_by_type_split = _get_feature_by_type_splits(config, train_mode)
+        feature_by_type_split = _feature_by_type_splits(config, train_mode)
         categorical_features = Step(name='categorical_features',
                                     transformer=Dummy(),
                                     input_steps=[feature_by_type_split],
                                     adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                              },
                                     cache_dirpath=config.env.cache_dirpath)
-        feature_combiner = _join_features(numerical_features=[],
+        feature_combiner = _features_join(numerical_features=[],
                                           numerical_features_valid=[],
                                           categorical_features=[categorical_features],
                                           categorical_features_valid=[],
-                                          config=config, train_mode=train_mode)
+                                          config=config, train_mode=train_mode,
+                                          **kwargs)
         return feature_combiner
 
 
-def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
+def feature_extraction_v1(config, train_mode, **kwargs):
     if train_mode:
-        feature_by_type_split, feature_by_type_split_valid = _get_feature_by_type_splits(config, train_mode)
-        filtered_categorical, filtered_categorical_valid = _get_categorical_frequency_filters(
+        (feature_by_type_split,
+         feature_by_type_split_valid) = _feature_by_type_splits(config, train_mode)
+
+        (features_confidance_rate,
+         features_confidance_rate_valid) = _confidence_rates((feature_by_type_split,
+                                                              feature_by_type_split_valid),
+                                                             config, train_mode)
+
+        (features_time_delta,
+         features_time_delta_valid) = _time_deltas((feature_by_type_split,
+                                                    feature_by_type_split_valid),
+                                                   config, train_mode)
+
+        (filtered_categorical,
+         filtered_categorical_valid) = _categorical_frequency_filters(
             (feature_by_type_split, feature_by_type_split_valid),
             config, train_mode)
 
-        target_encoder, target_encoder_valid = _get_target_encoders((filtered_categorical, filtered_categorical_valid),
-                                                                    config, train_mode)
-        binary_encoder, binary_encoder_valid = _get_binary_encoders((filtered_categorical, filtered_categorical_valid),
-                                                                    config, train_mode)
-
-        feature_combiner, feature_combiner_valid = _join_features(numerical_features=[target_encoder, binary_encoder],
-                                                                  numerical_features_valid=[target_encoder_valid,
-                                                                                            binary_encoder_valid],
-                                                                  categorical_features=[],
-                                                                  categorical_features_valid=[],
-                                                                  config=config, train_mode=train_mode,
-                                                                  save_output=save_output,
-                                                                  load_saved_output=load_saved_output)
+        (feature_combiner,
+         feature_combiner_valid) = _features_join(numerical_features=[features_confidance_rate,
+                                                                      features_time_delta],
+                                                  numerical_features_valid=[features_confidance_rate_valid,
+                                                                            features_time_delta_valid
+                                                                            ],
+                                                  categorical_features=[filtered_categorical],
+                                                  categorical_features_valid=[
+                                                      filtered_categorical_valid],
+                                                  config=config, train_mode=train_mode,
+                                                  **kwargs)
         return feature_combiner, feature_combiner_valid
     else:
-        feature_by_type_split = _get_feature_by_type_splits(config, train_mode)
+        feature_by_type_split = _feature_by_type_splits(config, train_mode)
 
-        filtered_categorical, filtered_categorical_valid = _get_categorical_frequency_filters(
-            feature_by_type_split,
-            config, train_mode)
-        target_encoder = _get_target_encoders(filtered_categorical, config, train_mode)
-        binary_encoder = _get_binary_encoders(filtered_categorical, config, train_mode)
+        features_confidance_rate = _confidence_rates(feature_by_type_split, config, train_mode)
 
-        feature_combiner = _join_features(numerical_features=[target_encoder, binary_encoder],
-                                          numerical_features_valid=[],
+        features_time_delta = _time_deltas(feature_by_type_split, config, train_mode)
+
+        filtered_categorical = _categorical_frequency_filters(feature_by_type_split,
+                                                              config, train_mode)
+
+        feature_combiner = _features_join(numerical_features=[features_confidance_rate,
+                                                              features_time_delta],
+                                          numerical_features_valid=[filtered_categorical],
                                           categorical_features=[],
                                           categorical_features_valid=[],
                                           config=config, train_mode=train_mode,
-                                          save_output=save_output)
+                                          **kwargs)
     return feature_combiner
 
 
@@ -159,7 +176,7 @@ def classifier_lgbm(features, config, train_mode):
     return light_gbm
 
 
-def _get_feature_by_type_splits(config, train_mode):
+def _feature_by_type_splits(config, train_mode):
     if train_mode:
         feature_by_type_split = Step(name='feature_by_type_split',
                                      transformer=fe.DataFrameByTypeSplitter(**config.dataframe_by_type_splitter),
@@ -188,7 +205,7 @@ def _get_feature_by_type_splits(config, train_mode):
         return feature_by_type_split
 
 
-def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_output=False):
+def _categorical_frequency_filters(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         categorical_filter = Step(name='categorical_filter',
@@ -198,7 +215,7 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                       'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
                                   },
                                   cache_dirpath=config.env.cache_dirpath,
-                                  save_output=save_output)
+                                  **kwargs)
 
         categorical_filter_valid = Step(name='categorical_filter_valid',
                                         transformer=categorical_filter,
@@ -207,7 +224,7 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                             [(feature_by_type_split_valid.name, 'categorical_features')]),
                                         },
                                         cache_dirpath=config.env.cache_dirpath,
-                                        save_output=save_output)
+                                        **kwargs)
 
         return categorical_filter, categorical_filter_valid
 
@@ -222,12 +239,12 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                       'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
                                   },
                                   cache_dirpath=config.env.cache_dirpath,
-                                  save_output=save_output)
+                                  **kwargs)
 
         return categorical_filter
 
 
-def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
+def _target_encoders(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         target_encoder = Step(name='target_encoder',
@@ -238,7 +255,7 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                                        'y': ([('input', 'y')], to_numpy_label_inputs),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         target_encoder_valid = Step(name='target_encoder_valid',
                                     transformer=target_encoder,
@@ -248,7 +265,7 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                                              'y': ([('input', 'y_valid')], to_numpy_label_inputs),
                                              },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+                                    **kwargs)
 
         return target_encoder, target_encoder_valid
 
@@ -262,12 +279,12 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                               adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         return target_encoder
 
 
-def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
+def _binary_encoders(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         binary_encoder = Step(name='binary_encoder',
@@ -278,7 +295,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                                        'y': ([('input', 'y')], to_numpy_label_inputs),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         binary_encoder_valid = Step(name='binary_encoder_valid',
                                     transformer=binary_encoder,
@@ -288,7 +305,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                                              'y': ([('input', 'y_valid')], to_numpy_label_inputs),
                                              },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+                                    **kwargs)
 
         return binary_encoder, binary_encoder_valid
 
@@ -302,14 +319,95 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                               adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         return binary_encoder
 
 
-def _join_features(numerical_features, numerical_features_valid,
+def _time_deltas(dispatchers, config, train_mode, **kwargs):
+    if train_mode:
+        feature_by_type_split, feature_by_type_split_valid = dispatchers
+        time_deltas = Step(name='time_deltas',
+                           transformer=fe.TimeDeltas(**config.time_deltas),
+                           input_steps=[feature_by_type_split],
+                           adapter={
+                               'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
+                               'timestamp_features': ([(feature_by_type_split.name, 'timestamp_features')])
+                           },
+                           cache_dirpath=config.env.cache_dirpath,
+                           **kwargs)
+
+        time_deltas_valid = Step(name='time_deltas_valid',
+                                 transformer=time_deltas,
+                                 input_steps=[feature_by_type_split_valid],
+                                 adapter={'categorical_features': (
+                                     [(feature_by_type_split_valid.name, 'categorical_features')]),
+                                     'timestamp_features': (
+                                         [(feature_by_type_split_valid.name, 'timestamp_features')])
+                                 },
+                                 cache_dirpath=config.env.cache_dirpath,
+                                 **kwargs)
+
+        return time_deltas, time_deltas_valid
+
+    else:
+        feature_by_type_split = dispatchers
+
+        time_deltas = Step(name='time_deltas',
+                           transformer=fe.TimeDeltas(**config.time_deltas),
+                           input_data=['input'],
+                           input_steps=[feature_by_type_split],
+                           adapter={
+                               'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
+                               'timestamp_features': ([(feature_by_type_split.name, 'timestamp_features')])},
+                           cache_dirpath=config.env.cache_dirpath,
+                           **kwargs)
+
+        return time_deltas
+
+
+def _confidence_rates(dispatchers, config, train_mode, **kwargs):
+    if train_mode:
+        feature_by_type_split, feature_by_type_split_valid = dispatchers
+        confidence_rates = Step(name='time_deltas',
+                                transformer=fe.ConfidenceRates(**config.confidence_rates),
+                                input_steps=[feature_by_type_split],
+                                adapter={
+                                    'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
+                                },
+                                cache_dirpath=config.env.cache_dirpath,
+                                **kwargs)
+
+        confidence_rates_valid = Step(name='confidence_rates_valid',
+                                      transformer=confidence_rates,
+                                      input_steps=[feature_by_type_split_valid],
+                                      adapter={'categorical_features': (
+                                          [(feature_by_type_split_valid.name, 'categorical_features')]),
+                                      },
+                                      cache_dirpath=config.env.cache_dirpath,
+                                      **kwargs)
+
+        return confidence_rates, confidence_rates_valid
+
+    else:
+        feature_by_type_split = dispatchers
+
+        confidence_rates = Step(name='confidence_rates',
+                                transformer=fe.ConfidenceRates(**config.confidence_rates),
+                                input_data=['input'],
+                                input_steps=[feature_by_type_split],
+                                adapter={
+                                    'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
+                                },
+                                cache_dirpath=config.env.cache_dirpath,
+                                **kwargs)
+
+        return confidence_rates
+
+
+def _features_join(numerical_features, numerical_features_valid,
                    categorical_features, categorical_features_valid,
-                   config, train_mode=False, save_output=False, load_saved_output=False):
+                   config, train_mode=False, **kwargs):
     if train_mode:
         feature_joiner = Step(name='feature_joiner',
                               transformer=fe.FeatureJoiner(),
@@ -321,7 +419,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                       [(feature.name, 'X') for feature in categorical_features], identity_inputs),
                               },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output, load_saved_output=load_saved_output)
+                              **kwargs)
 
         feature_joiner_valid = Step(name='feature_joiner_valid',
                                     transformer=feature_joiner,
@@ -333,7 +431,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                             identity_inputs),
                                     },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output, load_saved_output=load_saved_output)
+                                    **kwargs)
 
         return feature_joiner, feature_joiner_valid
 
@@ -348,7 +446,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                       [(feature.name, 'X') for feature in categorical_features], identity_inputs),
                               },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         return feature_joiner
 

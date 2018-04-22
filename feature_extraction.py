@@ -118,3 +118,13 @@ class BinaryEncoder(BasicCategoricalEncoder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.encoder_class = ce.binary.BinaryEncoder
+
+
+class TimeDeltas(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+
+class ConfidenceRates(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
