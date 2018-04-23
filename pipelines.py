@@ -27,11 +27,12 @@ def baseline(config, train_mode):
 
 def solution_1(config, train_mode):
     if train_mode:
-        features, features_valid = feature_extraction_v1(config, train_mode, save_output=True, load_saved_output=False)
+        features, features_valid = feature_extraction_v1(config, train_mode,
+                                                         save_output=True, cache_output=True, load_saved_output=False)
         light_gbm = classifier_lgbm((features, features_valid), config, train_mode)
     else:
-        features = feature_extraction_v1(config, train_mode, save_output=False, load_saved_output=False)
-        light_gbm = classifier_lgbm(features, train_mode)
+        features = feature_extraction_v1(config, train_mode, cache_output=True)
+        light_gbm = classifier_lgbm(features, config, train_mode)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -42,7 +43,7 @@ def solution_1(config, train_mode):
     return output
 
 
-def feature_extraction_v0(config, train_mode):
+def feature_extraction_v0(config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = _get_feature_by_type_splits(config, train_mode)
         categorical_features = Step(name='categorical_features',
@@ -50,13 +51,15 @@ def feature_extraction_v0(config, train_mode):
                                     input_steps=[feature_by_type_split],
                                     adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                              },
-                                    cache_dirpath=config.env.cache_dirpath)
+                                    cache_dirpath=config.env.cache_dirpath,
+                                    **kwargs)
         categorical_features_valid = Step(name='categorical_features_valid',
                                           transformer=Dummy(),
                                           input_steps=[feature_by_type_split_valid],
                                           adapter={'X': ([(feature_by_type_split_valid.name, 'categorical_features')]),
                                                    },
-                                          cache_dirpath=config.env.cache_dirpath)
+                                          cache_dirpath=config.env.cache_dirpath,
+                                          **kwargs)
         feature_combiner = _join_features(numerical_features=[],
                                           numerical_features_valid=[],
                                           categorical_features=[categorical_features],
@@ -70,7 +73,8 @@ def feature_extraction_v0(config, train_mode):
                                     input_steps=[feature_by_type_split],
                                     adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                              },
-                                    cache_dirpath=config.env.cache_dirpath)
+                                    cache_dirpath=config.env.cache_dirpath,
+                                    **kwargs)
         feature_combiner = _join_features(numerical_features=[],
                                           numerical_features_valid=[],
                                           categorical_features=[categorical_features],
@@ -79,7 +83,7 @@ def feature_extraction_v0(config, train_mode):
         return feature_combiner
 
 
-def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
+def feature_extraction_v1(config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = _get_feature_by_type_splits(config, train_mode)
         filtered_categorical, filtered_categorical_valid = _get_categorical_frequency_filters(
@@ -87,9 +91,9 @@ def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
             config, train_mode)
 
         target_encoder, target_encoder_valid = _get_target_encoders((filtered_categorical, filtered_categorical_valid),
-                                                                    config, train_mode)
+                                                                    config, train_mode, **kwargs)
         binary_encoder, binary_encoder_valid = _get_binary_encoders((filtered_categorical, filtered_categorical_valid),
-                                                                    config, train_mode)
+                                                                    config, train_mode, **kwargs)
 
         feature_combiner, feature_combiner_valid = _join_features(numerical_features=[target_encoder, binary_encoder],
                                                                   numerical_features_valid=[target_encoder_valid,
@@ -97,8 +101,7 @@ def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
                                                                   categorical_features=[],
                                                                   categorical_features_valid=[],
                                                                   config=config, train_mode=train_mode,
-                                                                  save_output=save_output,
-                                                                  load_saved_output=load_saved_output)
+                                                                  **kwargs)
         return feature_combiner, feature_combiner_valid
     else:
         feature_by_type_split = _get_feature_by_type_splits(config, train_mode)
@@ -106,19 +109,19 @@ def feature_extraction_v1(config, train_mode, save_output, load_saved_output):
         filtered_categorical, filtered_categorical_valid = _get_categorical_frequency_filters(
             feature_by_type_split,
             config, train_mode)
-        target_encoder = _get_target_encoders(filtered_categorical, config, train_mode)
-        binary_encoder = _get_binary_encoders(filtered_categorical, config, train_mode)
+        target_encoder = _get_target_encoders(filtered_categorical, config, train_mode, **kwargs)
+        binary_encoder = _get_binary_encoders(filtered_categorical, config, train_mode, **kwargs)
 
         feature_combiner = _join_features(numerical_features=[target_encoder, binary_encoder],
                                           numerical_features_valid=[],
                                           categorical_features=[],
                                           categorical_features_valid=[],
                                           config=config, train_mode=train_mode,
-                                          save_output=save_output)
+                                          **kwargs)
     return feature_combiner
 
 
-def classifier_lgbm(features, config, train_mode):
+def classifier_lgbm(features, config, train_mode, **kwargs):
     if train_mode:
         features_train, features_valid = features
         if config.random_search.light_gbm.n_runs:
@@ -148,14 +151,16 @@ def classifier_lgbm(features, config, train_mode):
                                   'X_valid': ([(features_valid.name, 'X')]),
                                   'y_valid': ([('input', 'y_valid')], to_numpy_label_inputs),
                                   },
-                         cache_dirpath=config.env.cache_dirpath)
+                         cache_dirpath=config.env.cache_dirpath,
+                         **kwargs)
     else:
         light_gbm = Step(name='light_gbm',
                          transformer=LightGBM(**config.light_gbm),
                          input_steps=[features],
                          adapter={'X': ([(features.name, 'X')]),
                                   },
-                         cache_dirpath=config.env.cache_dirpath)
+                         cache_dirpath=config.env.cache_dirpath,
+                         **kwargs)
     return light_gbm
 
 
@@ -188,7 +193,7 @@ def _get_feature_by_type_splits(config, train_mode):
         return feature_by_type_split
 
 
-def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_output=False):
+def _get_categorical_frequency_filters(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         categorical_filter = Step(name='categorical_filter',
@@ -198,7 +203,7 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                       'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
                                   },
                                   cache_dirpath=config.env.cache_dirpath,
-                                  save_output=save_output)
+                                  **kwargs)
 
         categorical_filter_valid = Step(name='categorical_filter_valid',
                                         transformer=categorical_filter,
@@ -207,7 +212,7 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                             [(feature_by_type_split_valid.name, 'categorical_features')]),
                                         },
                                         cache_dirpath=config.env.cache_dirpath,
-                                        save_output=save_output)
+                                        **kwargs)
 
         return categorical_filter, categorical_filter_valid
 
@@ -222,12 +227,12 @@ def _get_categorical_frequency_filters(dispatchers, config, train_mode, save_out
                                       'categorical_features': ([(feature_by_type_split.name, 'categorical_features')]),
                                   },
                                   cache_dirpath=config.env.cache_dirpath,
-                                  save_output=save_output)
+                                  **kwargs)
 
         return categorical_filter
 
 
-def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
+def _get_target_encoders(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         target_encoder = Step(name='target_encoder',
@@ -238,7 +243,7 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                                        'y': ([('input', 'y')], to_numpy_label_inputs),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         target_encoder_valid = Step(name='target_encoder_valid',
                                     transformer=target_encoder,
@@ -248,7 +253,7 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                                              'y': ([('input', 'y_valid')], to_numpy_label_inputs),
                                              },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+                                    **kwargs)
 
         return target_encoder, target_encoder_valid
 
@@ -262,12 +267,12 @@ def _get_target_encoders(dispatchers, config, train_mode, save_output=False):
                               adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         return target_encoder
 
 
-def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
+def _get_binary_encoders(dispatchers, config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = dispatchers
         binary_encoder = Step(name='binary_encoder',
@@ -278,7 +283,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                                        'y': ([('input', 'y')], to_numpy_label_inputs),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         binary_encoder_valid = Step(name='binary_encoder_valid',
                                     transformer=binary_encoder,
@@ -288,7 +293,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                                              'y': ([('input', 'y_valid')], to_numpy_label_inputs),
                                              },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output)
+                                    **kwargs)
 
         return binary_encoder, binary_encoder_valid
 
@@ -302,7 +307,7 @@ def _get_binary_encoders(dispatchers, config, train_mode, save_output=False):
                               adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              **kwargs)
 
         return binary_encoder
 

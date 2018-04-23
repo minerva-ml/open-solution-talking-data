@@ -48,11 +48,11 @@ SOLUTION_CONFIG = AttrDict({
                                     }
                       },
     'dataframe_by_type_splitter': {'numerical_columns': [],
-                                   'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
+                                   'categorical_columns': [ 'ip','app', 'device', 'os', 'channel'],
                                    'timestamp_columns': ['click_time'],
                                    },
     'categorical_filter': {'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
-                           'min_frequencies': [10, 10, 10, 10],
+                           'min_frequencies': [20, 10, 10, 10, 10],
                            'impute_value': -1
                            },
     'target_encoder': {'min_samples_leaf': safe_eval(params.target_encoder__min_samples_leaf),
