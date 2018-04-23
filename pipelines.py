@@ -85,48 +85,38 @@ def feature_extraction_v0(config, train_mode, **kwargs):
 
 def feature_extraction_v1(config, train_mode, **kwargs):
     if train_mode:
-        (feature_by_type_split,
-         feature_by_type_split_valid) = _feature_by_type_splits(config, train_mode)
+        (feature_by_type_split, feature_by_type_split_valid) = _feature_by_type_splits(config, train_mode)
 
-        (features_confidance_rate,
-         features_confidance_rate_valid) = _confidence_rates((feature_by_type_split,
-                                                              feature_by_type_split_valid),
-                                                             config, train_mode)
-
-        (features_time_delta,
-         features_time_delta_valid) = _time_deltas((feature_by_type_split,
-                                                    feature_by_type_split_valid),
-                                                   config, train_mode)
-
-        (filtered_categorical,
-         filtered_categorical_valid) = _categorical_frequency_filters(
+        (features_confidance_rate, features_confidance_rate_valid) = _confidence_rates((feature_by_type_split,
+                                                                                        feature_by_type_split_valid),
+                                                                                       config, train_mode)
+        (features_time_delta, features_time_delta_valid) = _time_deltas((feature_by_type_split,
+                                                                         feature_by_type_split_valid),
+                                                                        config, train_mode)
+        (filtered_categorical, filtered_categorical_valid) = _categorical_frequency_filters(
             (feature_by_type_split, feature_by_type_split_valid),
             config, train_mode)
 
-        (feature_combiner,
-         feature_combiner_valid) = _features_join(numerical_features=[features_confidance_rate,
-                                                                      features_time_delta],
-                                                  numerical_features_valid=[features_confidance_rate_valid,
-                                                                            features_time_delta_valid
-                                                                            ],
-                                                  categorical_features=[filtered_categorical],
-                                                  categorical_features_valid=[
-                                                      filtered_categorical_valid],
-                                                  config=config, train_mode=train_mode,
-                                                  **kwargs)
+        (feature_combiner, feature_combiner_valid) = _features_join(numerical_features=[features_confidance_rate,
+                                                                                        features_time_delta],
+                                                                    numerical_features_valid=[
+                                                                        features_confidance_rate_valid,
+                                                                        features_time_delta_valid
+                                                                    ],
+                                                                    categorical_features=[filtered_categorical],
+                                                                    categorical_features_valid=[
+                                                                        filtered_categorical_valid],
+                                                                    config=config, train_mode=train_mode,
+                                                                    **kwargs)
         return feature_combiner, feature_combiner_valid
     else:
         feature_by_type_split = _feature_by_type_splits(config, train_mode)
 
         features_confidance_rate = _confidence_rates(feature_by_type_split, config, train_mode)
-
         features_time_delta = _time_deltas(feature_by_type_split, config, train_mode)
+        filtered_categorical = _categorical_frequency_filters(feature_by_type_split, config, train_mode)
 
-        filtered_categorical = _categorical_frequency_filters(feature_by_type_split,
-                                                              config, train_mode)
-
-        feature_combiner = _features_join(numerical_features=[features_confidance_rate,
-                                                              features_time_delta],
+        feature_combiner = _features_join(numerical_features=[features_confidance_rate, features_time_delta],
                                           numerical_features_valid=[filtered_categorical],
                                           categorical_features=[],
                                           categorical_features_valid=[],

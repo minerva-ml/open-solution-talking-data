@@ -121,8 +121,37 @@ class BinaryEncoder(BasicCategoricalEncoder):
 
 
 class TimeDeltas(BaseTransformer):
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, groupby_specs, timestamp_column):
+        self.groupby_specs = groupby_specs
+        self.timestamp_column = timestamp_column
+
+    @property
+    def time_delta_names(self):
+        time_delta_names = ['{}_time_delta'.format('_'.join(groupby_spec))
+                            for groupby_spec in self.groupby_specs]
+        return time_delta_names
+
+    @property
+    def is_null_names(self):
+        is_null_names = ['{}_is_nan'.format('_'.join(groupby_spec))
+                         for groupby_spec in self.groupby_specs]
+        return is_null_names
+
+    def transform(self, categorical_features, timestamp_features):
+        X = pd.concat([categorical_features, timestamp_features], axis=1)
+        for groupby_spec, time_delta_name, is_null_name in zip(self.groupby_specs,
+                                                               self.time_delta_names,
+                                                               self.is_null_names):
+            X[time_delta_name] = X.groupby(groupby_spec).apply(self._time_delta)
+            X[is_null_name] = pd.isnull(X[time_delta_name])
+
+        return {'numerical_features': X[self.time_delta_names],
+                'categorical_features': X[self.is_null_names]}
+
+    def _time_delta(self, groupby_object):
+        print(groupby_object)
+        # X[feature_name] = X.sort_values(['click_time']).groupby(self.time_del_vars).diff()
+        return
 
 
 class ConfidenceRates(BaseTransformer):

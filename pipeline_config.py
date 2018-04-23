@@ -52,7 +52,9 @@ SOLUTION_CONFIG = AttrDict({
                                    'timestamp_columns': ['click_time'],
                                    },
 
-    'time_deltas': {},
+    'time_deltas': {'groupby_specs': [['app', 'os'], ['os', 'ip']],
+                    'timestamp_column': 'click_time'
+                    },
 
     'confidence_rates': {},
 
