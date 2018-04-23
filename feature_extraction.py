@@ -89,7 +89,7 @@ class BinaryEncoder(BasicCategoricalEncoder):
 
 class ConfidenceRate(BaseTransformer):
 
-    def __init__(self, confidence_level=100, categories=[['ip'], ['app'], ['device'], ['os'], ['channel']]):
+    def __init__(self, confidence_level=100, categories=[['channel']]):
         self.confidence_level = confidence_level
         self.categories = categories
 
@@ -118,3 +118,57 @@ class ConfidenceRate(BaseTransformer):
         confidence = np.min([1, np.log(x.count()) / np.log(self.confidence_level)])
 
         return rate * confidence * 100
+
+
+class ConfidenceRateCutOff(BaseTransformer):
+
+    def __init__(self, confidence_level=100, categories=[['channel']]):
+
+        self.confidence_level = confidence_level
+        self.categories = categories
+
+    def transform(self, X, y):
+
+        concatenated_dataframe = pd.concat([X, y])
+        new_features = []
+
+        for category in self.categories:
+            new_feature = '_'.join(category) + '_confidence'
+            new_features.append(new_feature)
+            new_features.append(new_feature + '_rate')
+
+            group_object = concatenated_dataframe.groupby(category)
+
+            confidence = group_object['is_attributed'].apply(self._confidence_calculation).reset_index().rename(
+                index=str,
+                columns={'is_attributed': new_feature}
+            )[category + [new_feature]]
+
+            rate = group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
+                index=str,
+                columns={'is_attributed': new_feature + '_rate'}
+            )[category + [new_feature + '_rate']]
+
+            new_columns = confidence.merge(rate, on=category)
+
+            concatenated_dataframe = concatenated_dataframe.merge(new_columns, on=category, how='left')
+
+        return {'numerical_features': concatenated_dataframe[new_features]}
+
+    def _confidence_calculation(self, x):
+
+        if x.count() > self.confidence_level:
+            is_above_level = 1
+        else:
+            is_above_level = 0
+
+        return is_above_level
+
+    def _rate_calculation(self, x):
+
+        if x.count() > self.confidence_level:
+            rate = x.sum() / float(x.count())
+        else:
+            rate = 0
+
+        return rate * 100
