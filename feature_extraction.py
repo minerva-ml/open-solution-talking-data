@@ -1,5 +1,6 @@
 import category_encoders as ce
 import pandas as pd
+import numpy as np
 from sklearn.externals import joblib
 
 from steps.base import BaseTransformer
@@ -84,3 +85,36 @@ class BinaryEncoder(BasicCategoricalEncoder):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.encoder_class = ce.binary.BinaryEncoder
+
+
+class ConfidenceRate(BaseTransformer):
+
+    def __init__(self, confidence_level=100, categories=[['ip'], ['app'], ['device'], ['os'], ['channel']]):
+        self.confidence_level = confidence_level
+        self.categories = categories
+
+    def transform(self, X, y):
+        concatenated_dataframe = pd.concat([X, y])
+        new_features = []
+
+        for category in self.categories:
+            new_feature = '_'.join(category) + '_confidence_rate'
+            new_features.append(new_feature)
+
+            group_object = concatenated_dataframe.groupby(category)
+
+            concatenated_dataframe = concatenated_dataframe.merge(
+                group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
+                    index=str,
+                    columns={'is_attributed': new_feature}
+                )[category + [new_feature]],
+                on=category, how='left'
+            )
+
+        return {'numerical_features': concatenated_dataframe[new_features]}
+
+    def _rate_calculation(self, x):
+        rate = x.sum() / float(x.count())
+        confidence = np.min([1, np.log(x.count()) / np.log(self.confidence_level)])
+
+        return rate * confidence * 100
