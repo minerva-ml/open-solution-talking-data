@@ -34,7 +34,7 @@ class FeatureJoiner(BaseTransformer):
     def transform(self, numerical_feature_list, categorical_feature_list, **kwargs):
         outputs = {}
 
-        outputs['X'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
+        outputs['features'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
         outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
         outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
 
@@ -85,10 +85,10 @@ class CategoricalFilter(BaseTransformer):
         joblib.dump(params, filepath)
 
 
-class BasicCategoricalEncoder(BaseTransformer):
+class TargetEncoder(BaseTransformer):
     def __init__(self, **kwargs):
         self.params = kwargs
-        self.encoder_class = None
+        self.encoder_class = ce.TargetEncoder
 
     def fit(self, X, y, **kwargs):
         categorical_columns = list(X.columns)
@@ -98,7 +98,7 @@ class BasicCategoricalEncoder(BaseTransformer):
 
     def transform(self, X, y=None, **kwargs):
         X_ = self.target_encoder.transform(X)
-        return {'X': X_}
+        return {'numerical_features': X_}
 
     def load(self, filepath):
         self.target_encoder = joblib.load(filepath)
@@ -108,13 +108,67 @@ class BasicCategoricalEncoder(BaseTransformer):
         joblib.dump(self.target_encoder, filepath)
 
 
-class TargetEncoder(BasicCategoricalEncoder):
+class BinaryEncoder(BaseTransformer):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.encoder_class = ce.TargetEncoder
-
-
-class BinaryEncoder(BasicCategoricalEncoder):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        self.params = kwargs
         self.encoder_class = ce.binary.BinaryEncoder
+
+    def fit(self, X, **kwargs):
+        categorical_columns = list(X.columns)
+        self.binary_encoder = self.encoder_class(cols=categorical_columns, **self.params)
+        self.binary_encoder.fit(X)
+        return self
+
+    def transform(self, X, **kwargs):
+        X_ = self.binary_encoder.transform(X)
+        return {'numerical_features': X_}
+
+    def load(self, filepath):
+        self.target_encoder = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.target_encoder, filepath)
+
+
+class TimeDelta(BaseTransformer):
+    def __init__(self, groupby_specs, timestamp_column):
+        self.groupby_specs = groupby_specs
+        self.timestamp_column = timestamp_column
+
+    @property
+    def time_delta_names(self):
+        time_delta_names = ['{}_time_delta'.format('_'.join(groupby_spec))
+                            for groupby_spec in self.groupby_specs]
+        return time_delta_names
+
+    @property
+    def is_null_names(self):
+        is_null_names = ['{}_is_nan'.format('_'.join(groupby_spec))
+                         for groupby_spec in self.groupby_specs]
+        return is_null_names
+
+    def transform(self, categorical_features, timestamp_features):
+        X = pd.concat([categorical_features, timestamp_features], axis=1)
+        for groupby_spec, time_delta_name, is_null_name in zip(self.groupby_specs,
+                                                               self.time_delta_names,
+                                                               self.is_null_names):
+            X[time_delta_name] = X.groupby(groupby_spec)[self.timestamp_column].apply(self._time_delta).reset_index(
+                level=list(range(len(groupby_spec))), drop=True)
+            X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
+            X[time_delta_name].fillna(0, inplace=True)
+
+        return {'numerical_features': X[self.time_delta_names],
+                'categorical_features': X[self.is_null_names]}
+
+    def _time_delta(self, groupby_object):
+        if len(groupby_object) == 1:
+            return pd.Series(np.nan, index=groupby_object.index)
+        else:
+            groupby_object = groupby_object.sort_values().diff().dt.seconds
+            return groupby_object
+
+
+class ConfidenceRate(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass

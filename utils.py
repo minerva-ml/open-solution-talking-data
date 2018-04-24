@@ -106,6 +106,8 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None
             print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
+    data_chunks['click_time'] = pd.to_datetime(data_chunks['click_time'], format='%Y-%m-%d %H:%M:%S')
+
     if logger is not None:
         logger.info('combined dataset shape: {}'.format(data_chunks.shape))
     else:

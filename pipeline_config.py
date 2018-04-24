@@ -51,6 +51,13 @@ SOLUTION_CONFIG = AttrDict({
                                    'categorical_columns': [ 'ip','app', 'device', 'os', 'channel'],
                                    'timestamp_columns': ['click_time'],
                                    },
+
+    'time_delta': {'groupby_specs': [['app', 'os'], ['os', 'ip']],
+                    'timestamp_column': 'click_time'
+                    },
+
+    'confidence_rate': {},
+
     'categorical_filter': {'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
                            'min_frequencies': [20, 10, 10, 10, 10],
                            'impute_value': -1
