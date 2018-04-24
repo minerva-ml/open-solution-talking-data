@@ -17,7 +17,9 @@ DEV_TRAIN_DAYS = [8]
 DEV_TRAIN_HOURS = [4, 5]
 DEV_VALID_DAYS = [9]
 DEV_VALID_HOURS = [4]
-DEV_SAMPLE_SIZE = int(10e4)
+DEV_SAMPLE_TRAIN_SIZE = int(20e4)
+DEV_SAMPLE_VALID_SIZE = int(10e4)
+DEV_SAMPLE_TEST_SIZE = int(10e3)
 
 COLUMN_TYPES = {'train': {'ip': 'uint32',
                           'app': 'uint16',

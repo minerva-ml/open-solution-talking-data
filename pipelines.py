@@ -92,7 +92,7 @@ def feature_extraction_v1(config, train_mode, **kwargs):
                                                                    config, train_mode, **kwargs)
 
         feature_combiner, feature_combiner_valid = _join_features(numerical_features=[time_delta, confidence_rate],
-                                                                  numerical_features_valid=[time_delta,
+                                                                  numerical_features_valid=[time_delta_valid,
                                                                                             confidence_rate_valid],
                                                                   categorical_features=[time_delta],
                                                                   categorical_features_valid=[time_delta_valid],

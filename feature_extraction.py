@@ -38,9 +38,8 @@ class FeatureJoiner(BaseTransformer):
 
         outputs = {}
         outputs['features'] = pd.concat(features, axis=1)
-        outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
+        outputs['feature_names'] = self._get_feature_names(features)
         outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
-
         return outputs
 
     def _get_feature_names(self, dataframes):
