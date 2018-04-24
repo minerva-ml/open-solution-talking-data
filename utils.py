@@ -1,4 +1,5 @@
 from itertools import product
+import hashlib
 import logging
 import random
 import sys
@@ -57,14 +58,6 @@ def read_params(ctx):
     return params
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
-
-
-def sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
-
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -113,6 +106,8 @@ def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None
             print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
     data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
+    data_chunks['click_time'] = pd.to_datetime(data_chunks['click_time'], format='%Y-%m-%d %H:%M:%S')
+
     if logger is not None:
         logger.info('combined dataset shape: {}'.format(data_chunks.shape))
     else:
@@ -127,31 +122,15 @@ def data_hash_channel_send(ctx, name, data):
 
 
 def create_data_hash(data):
-    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
-        data_hash = make_pandas_hash(data)
+    if isinstance(data, pd.DataFrame):
+        data_hash = hashlib.sha256(data.to_json().encode()).hexdigest()
     else:
         raise NotImplementedError('only pandas.DataFrame and pandas.Series are supported')
     return str(data_hash)
 
 
-def make_pandas_hash(item):
-    if isinstance(item, pd.DataFrame) or isinstance(item, pd.Series):
-        item = item.to_json()
+def safe_eval(obj):
     try:
-        return hash(item)
-    except TypeError:
-        try:
-            # this might act funny if a thing is convertible to tuple but the tuple
-            # is not a proper representation for the item (like for a frame :-()
-            return hash(tuple(item))
-        except TypeError as e:
-            print("Unhashable type: %s, %s" % (item, [type(t) for t in tuple(item)]))
-            raise e
-
-
-def to_numpy_label(inputs):
-    return inputs[0].values.reshape(-1)
-
-
-def to_list_inputs(inputs):
-    return inputs
+        return eval(obj)
+    except Exception:
+        return obj

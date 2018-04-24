@@ -1,7 +1,7 @@
 project: TDAT
 
 name: talking data
-tags: [baseline]
+tags: [solution_1, train_subset, random_search]
 
 metric:
   channel: 'ROC_AUC'
@@ -25,7 +25,7 @@ parameters:
   raw_train_filepath: /public/talking_data/data/train.csv
   train_chunks_dir: /public/talking_data/files
   test_filepath:  /public/talking_data/data/test.csv
-  experiment_dir: /output/baseline
+  experiment_dir: /output/solution_1
   train_days: '[7, 8]'
   train_hours: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]'
   valid_days: '[9]'
@@ -33,29 +33,29 @@ parameters:
 
 # Execution
   overwrite: 1
-  num_workers: 8
+  num_workers: 10
   verbose: 1
 
 # Preprocessing
-  target_encoder__min_samples_leaf: 5
+  target_encoder__min_samples_leaf: 1
   target_encoder__smoothing: 1
 
 # Light GBM
-  lgbm_random_search_runs: 0
+  lgbm_random_search_runs: 100
   lgbm__boosting_type: gbdt
   lgbm__objective: binary
   lgbm__metric: auc
   lgbm__number_boosting_rounds: 100
   lgbm__early_stopping_rounds: 10
-  lgbm__learning_rate: 0.01
-  lgbm__num_leaves: 10
-  lgbm__max_depth: 10
-  lgbm__min_child_samples: 10
-  lgbm__max_bin: 200
-  lgbm__subsample: 0.8
-  lgbm__subsample_freq: 6
-  lgbm__colsample_bytree: 0.4
-  lgbm__min_child_weight: 6
-  lgbm__reg_lambda: 0.0
-  lgbm__reg_alpha: 0.0
-  lgbm__scale_pos_weight: 10
+  lgbm__learning_rate: '[0.01, 1.0, "log-uniform"]'
+  lgbm__num_leaves: '[1, 100]'
+  lgbm__max_depth: '[0, 15]'
+  lgbm__min_child_samples: '[0, 50]'
+  lgbm__max_bin: '[100, 1000]'
+  lgbm__subsample: '[0.6, 1.0, "uniform"]'
+  lgbm__subsample_freq: '[0, 10]'
+  lgbm__colsample_bytree: '[0.1, 1.0, "uniform"]'
+  lgbm__min_child_weight: '[0, 10]'
+  lgbm__reg_lambda: '[1e-9, 1000, "log-uniform"]'
+  lgbm__reg_alpha: '[1e-9, 1.0, "log-uniform"]'
+  lgbm__scale_pos_weight: '[5, 500, "log-uniform"]'
