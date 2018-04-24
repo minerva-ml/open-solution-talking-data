@@ -43,6 +43,7 @@ class RandomSearchOptimizer(BaseTransformer):
             for callback in self.callbacks:
                 callback.on_run_end(score=run_score, params=param_set)
 
+        assert len(results) > 0, 'All random search runs failed, check your parameter space'
         results_sorted = sorted(results, key=lambda x: x[0])
 
         if self.maximize:

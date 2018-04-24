@@ -86,40 +86,27 @@ def feature_extraction_v0(config, train_mode, **kwargs):
 def feature_extraction_v1(config, train_mode, **kwargs):
     if train_mode:
         feature_by_type_split, feature_by_type_split_valid = _feature_by_type_splits(config, train_mode)
-        filtered_categorical, filtered_categorical_valid = _categorical_frequency_filters(
-            (feature_by_type_split, feature_by_type_split_valid),
-            config, train_mode)
-
-        time_delta, time_delta_valid = _time_deltas((filtered_categorical, filtered_categorical_valid),
+        time_delta, time_delta_valid = _time_deltas((feature_by_type_split, feature_by_type_split_valid),
                                                     config, train_mode, **kwargs)
-        confidence_rate, confidence_rate_valid = _confidence_rates((filtered_categorical, filtered_categorical_valid),
+        confidence_rate, confidence_rate_valid = _confidence_rates((feature_by_type_split, feature_by_type_split_valid),
                                                                    config, train_mode, **kwargs)
 
         feature_combiner, feature_combiner_valid = _join_features(numerical_features=[time_delta, confidence_rate],
                                                                   numerical_features_valid=[time_delta,
                                                                                             confidence_rate_valid],
-                                                                  categorical_features=[filtered_categorical,
-                                                                                        time_delta],
-                                                                  categorical_features_valid=[
-                                                                      filtered_categorical_valid,
-                                                                      time_delta_valid
-                                                                  ],
+                                                                  categorical_features=[time_delta],
+                                                                  categorical_features_valid=[time_delta_valid],
                                                                   config=config, train_mode=train_mode,
                                                                   **kwargs)
         return feature_combiner, feature_combiner_valid
     else:
         feature_by_type_split = _feature_by_type_splits(config, train_mode)
+        time_delta = _time_deltas(feature_by_type_split, config, train_mode, **kwargs)
+        confidence_rate = _confidence_rates(feature_by_type_split, config, train_mode, **kwargs)
 
-        filtered_categorical, filtered_categorical_valid = _categorical_frequency_filters(
-            feature_by_type_split,
-            config, train_mode)
-
-        time_delta = _time_deltas(filtered_categorical, config, train_mode, **kwargs)
-        confidence_rate = _confidence_rates(filtered_categorical, config, train_mode, **kwargs)
         feature_combiner = _join_features(numerical_features=[time_delta, confidence_rate],
                                           numerical_features_valid=[],
-                                          categorical_features=[filtered_categorical,
-                                                                time_delta],
+                                          categorical_features=[time_delta],
                                           categorical_features_valid=[],
                                           config=config, train_mode=train_mode,
                                           **kwargs)
@@ -410,6 +397,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                       [(feature.name, 'categorical_features') for feature in categorical_features],
                                       identity_inputs),
                               },
+                              cache_dirpath=config.env.cache_dirpath,
                               **kwargs)
 
         feature_joiner_valid = Step(name='feature_joiner_valid',
@@ -423,6 +411,7 @@ def _join_features(numerical_features, numerical_features_valid,
                                              categorical_features_valid],
                                             identity_inputs),
                                     },
+                                    cache_dirpath=config.env.cache_dirpath,
                                     **kwargs)
 
         return feature_joiner, feature_joiner_valid
