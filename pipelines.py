@@ -92,11 +92,12 @@ def feature_extraction_v1(config, train_mode, **kwargs):
 
         time_delta, time_delta_valid = _time_deltas((filtered_categorical, filtered_categorical_valid),
                                                     config, train_mode, **kwargs)
-        # confidence_rate, confidence_rate_valid = _confidence_rates((filtered_categorical, filtered_categorical_valid),
-        #                                                            config, train_mode, **kwargs)
+        confidence_rate, confidence_rate_valid = _confidence_rates((filtered_categorical, filtered_categorical_valid),
+                                                                   config, train_mode, **kwargs)
 
-        feature_combiner, feature_combiner_valid = _join_features(numerical_features=[time_delta],
-                                                                  numerical_features_valid=[time_delta                                                                                            ],
+        feature_combiner, feature_combiner_valid = _join_features(numerical_features=[time_delta, confidence_rate],
+                                                                  numerical_features_valid=[time_delta,
+                                                                                            confidence_rate_valid],
                                                                   categorical_features=[filtered_categorical,
                                                                                         time_delta],
                                                                   categorical_features_valid=[
@@ -114,8 +115,8 @@ def feature_extraction_v1(config, train_mode, **kwargs):
             config, train_mode)
 
         time_delta = _time_deltas(filtered_categorical, config, train_mode, **kwargs)
-        # confidence_rate = _confidence_rates(filtered_categorical, config, train_mode, **kwargs)
-        feature_combiner = _join_features(numerical_features=[time_delta],
+        confidence_rate = _confidence_rates(filtered_categorical, config, train_mode, **kwargs)
+        feature_combiner = _join_features(numerical_features=[time_delta, confidence_rate],
                                           numerical_features_valid=[],
                                           categorical_features=[filtered_categorical,
                                                                 time_delta],

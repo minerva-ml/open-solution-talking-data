@@ -170,5 +170,32 @@ class TimeDelta(BaseTransformer):
 
 
 class ConfidenceRate(BaseTransformer):
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, confidence_level=100, categories=[]):
+        self.confidence_level = confidence_level
+        self.categories = categories
+
+    def transform(self, categorical_features, target):
+        concatenated_dataframe = pd.concat([categorical_features, target], axis=1)
+        new_features = []
+
+        for category in self.categories:
+            new_feature = '{}_confidence_rate'.format('_'.join(category))
+            new_features.append(new_feature)
+
+            group_object = concatenated_dataframe.groupby(category)
+
+            concatenated_dataframe = concatenated_dataframe.merge(
+                group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
+                    index=str,
+                    columns={'is_attributed': new_feature}
+                )[category + [new_feature]],
+                on=category, how='left'
+            )
+
+        return {'numerical_features': concatenated_dataframe[new_features]}
+
+    def _rate_calculation(self, x):
+        rate = x.sum() / float(x.count())
+        confidence = np.min([1, np.log(x.count()) / np.log(self.confidence_level)])
+
+        return rate * confidence * 100
