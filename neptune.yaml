@@ -37,10 +37,8 @@ parameters:
   verbose: 1
 
 # Preprocessing
-  feature_dispatcher__return_df: 1
   target_encoder__min_samples_leaf: 5
   target_encoder__smoothing: 1
-  feature_joiner__return_df: 1
 
 # Light GBM
   lgbm_random_search_runs: 0

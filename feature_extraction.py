@@ -32,9 +32,12 @@ class DataFrameByTypeSplitter(BaseTransformer):
 
 class FeatureJoiner(BaseTransformer):
     def transform(self, numerical_feature_list, categorical_feature_list, **kwargs):
-        outputs = {}
+        features = numerical_feature_list + categorical_feature_list
+        for feature in features:
+            feature.reset_index(drop=True, inplace=True)
 
-        outputs['features'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
+        outputs = {}
+        outputs['features'] = pd.concat(features, axis=1)
         outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
         outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
 
@@ -157,7 +160,6 @@ class TimeDelta(BaseTransformer):
                 level=list(range(len(groupby_spec))), drop=True)
             X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
             X[time_delta_name].fillna(0, inplace=True)
-
         return {'numerical_features': X[self.time_delta_names],
                 'categorical_features': X[self.is_null_names]}
 
@@ -191,7 +193,6 @@ class ConfidenceRate(BaseTransformer):
                 )[category + [new_feature]],
                 on=category, how='left'
             )
-
         return {'numerical_features': concatenated_dataframe[new_features]}
 
     def _rate_calculation(self, x):
