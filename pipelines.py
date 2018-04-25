@@ -50,15 +50,17 @@ def feature_extraction_v0(config, train_mode, **kwargs):
         categorical_features = Step(name='categorical_features',
                                     transformer=Dummy(),
                                     input_steps=[feature_by_type_split],
-                                    adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
+                                    adapter={'categorical_features': (
+                                    [(feature_by_type_split.name, 'categorical_features')]),
                                              },
                                     cache_dirpath=config.env.cache_dirpath,
                                     **kwargs)
         categorical_features_valid = Step(name='categorical_features_valid',
                                           transformer=Dummy(),
                                           input_steps=[feature_by_type_split_valid],
-                                          adapter={'X': ([(feature_by_type_split_valid.name, 'categorical_features')]),
-                                                   },
+                                          adapter={'categorical_features': (
+                                              [(feature_by_type_split_valid.name, 'categorical_features')]),
+                                          },
                                           cache_dirpath=config.env.cache_dirpath,
                                           **kwargs)
         feature_combiner = _join_features(numerical_features=[],
@@ -72,8 +74,9 @@ def feature_extraction_v0(config, train_mode, **kwargs):
         categorical_features = Step(name='categorical_features',
                                     transformer=Dummy(),
                                     input_steps=[feature_by_type_split],
-                                    adapter={'X': ([(feature_by_type_split.name, 'categorical_features')]),
-                                             },
+                                    adapter={'categorical_features': (
+                                        [(feature_by_type_split.name, 'categorical_features')]),
+                                    },
                                     cache_dirpath=config.env.cache_dirpath,
                                     **kwargs)
         feature_combiner = _join_features(numerical_features=[],
