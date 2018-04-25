@@ -140,13 +140,13 @@ class TimeDelta(BaseTransformer):
 
     @property
     def time_delta_names(self):
-        time_delta_names = ['{}_time_delta'.format('_'.join(groupby_spec))
+        time_delta_names = ['time_delta_{}'.format('_'.join(groupby_spec))
                             for groupby_spec in self.groupby_specs]
         return time_delta_names
 
     @property
     def is_null_names(self):
-        is_null_names = ['{}_is_nan'.format('_'.join(groupby_spec))
+        is_null_names = ['time_delta_is_nan_{}'.format('_'.join(groupby_spec))
                          for groupby_spec in self.groupby_specs]
         return is_null_names
 
@@ -178,7 +178,7 @@ class ConfidenceRate(BaseTransformer):
 
     @property
     def confidence_rate_names(self):
-        confidence_rate_names = ['{}_confidence_rate'.format('_'.join(category))
+        confidence_rate_names = ['confidence_rate_{}'.format('_'.join(category))
                                  for category in self.categories]
         return confidence_rate_names
 
@@ -191,15 +191,13 @@ class ConfidenceRate(BaseTransformer):
     def fit(self, categorical_features, target):
         concatenated_dataframe = pd.concat([categorical_features, target], axis=1)
 
-        for category in self.categories:
-            new_feature = '{}_confidence_rate'.format('_'.join(category))
-
+        for category, confidence_rate_name in zip(self.categories, self.confidence_rate_names):
             group_object = concatenated_dataframe.groupby(category)
 
             self.confidence_rates_map['_'.join(category)] = \
-            group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
-                index=str,
-                columns={'is_attributed': new_feature})[category + [new_feature]]
+                group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
+                    index=str,
+                    columns={'is_attributed': confidence_rate_name})[category + [confidence_rate_name]]
 
         return self
 
@@ -209,8 +207,8 @@ class ConfidenceRate(BaseTransformer):
                                                                 self.confidence_rate_names,
                                                                 self.is_null_names):
             categorical_features = categorical_features.merge(self.confidence_rates_map['_'.join(category)],
-                        on=category,
-                        how='left')
+                                                              on=category,
+                                                              how='left')
             categorical_features[is_null_name] = pd.isnull(categorical_features[confidence_rate_name]).astype(int)
             categorical_features[confidence_rate_name].fillna(0, inplace=True)
 
