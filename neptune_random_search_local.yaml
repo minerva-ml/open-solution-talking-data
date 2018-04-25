@@ -1,0 +1,60 @@
+project: TDAT
+
+name: talking data
+tags: [solution_1, train_subset, random_search]
+
+metric:
+  channel: 'ROC_AUC'
+  goal: maximize
+
+# Comment out if not in Cloud Environment
+#pip-requirements-file: requirements.txt
+
+exclude:
+  - output
+  - imgs
+  - neptune.log
+  - offline_job.log
+  - .git
+  - .idea
+  - .ipynb_checkpoints
+
+parameters:
+# Data
+  raw_train_filepath: /mnt/ml-team/minerva/talking_data/data/train.csv
+  train_chunks_dir: /mnt/ml-team/minerva/talking_data/files
+  test_filepath: /mnt/ml-team/minerva/talking_data/data/test.csv
+  experiment_dir: /mnt/ml-team/minerva/talking_data/kuba/experiments/solution_week1_full
+  train_days: '[7, 8]'
+  train_hours: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]'
+  valid_days: '[9]'
+  valid_hours: '[4]'
+
+# Execution
+  overwrite: 1
+  num_workers: 10
+  verbose: 1
+
+# Preprocessing
+  target_encoder__min_samples_leaf: 1
+  target_encoder__smoothing: 1
+
+# Light GBM
+  lgbm_random_search_runs: 100
+  lgbm__boosting_type: gbdt
+  lgbm__objective: binary
+  lgbm__metric: auc
+  lgbm__number_boosting_rounds: 100
+  lgbm__early_stopping_rounds: 10
+  lgbm__learning_rate: '[0.01, 1.0, "log-uniform"]'
+  lgbm__num_leaves: '[1, 100]'
+  lgbm__max_depth: '[0, 15]'
+  lgbm__min_child_samples: '[0, 50]'
+  lgbm__max_bin: '[100, 1000]'
+  lgbm__subsample: '[0.6, 1.0, "uniform"]'
+  lgbm__subsample_freq: '[0, 10]'
+  lgbm__colsample_bytree: '[0.1, 1.0, "uniform"]'
+  lgbm__min_child_weight: '[0, 10]'
+  lgbm__reg_lambda: '[1e-9, 1000, "log-uniform"]'
+  lgbm__reg_alpha: '[1e-9, 1.0, "log-uniform"]'
+  lgbm__scale_pos_weight: '[5, 500, "log-uniform"]'

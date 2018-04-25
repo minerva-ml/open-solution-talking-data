@@ -58,14 +58,6 @@ def read_params(ctx):
     return params
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
-
-
-def sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
-
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
