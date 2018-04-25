@@ -23,12 +23,12 @@ exclude:
 parameters:
 # Data
   raw_train_filepath: /public/talking_data/data/train.csv
-  train_chunks_dir: /public/talking_data/files
-  test_filepath:  /public/talking_data/data/test.csv
-  experiment_dir: /output/solution_1
-  train_days: '[7, 8]'
+  train_chunks_dir:   /public/talking_data/files
+  test_filepath:      /public/talking_data/data/test.csv
+  experiment_dir:     /output/solution_1
+  train_days:  '[7, 8]'
   train_hours: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]'
-  valid_days: '[9]'
+  valid_days:  '[9]'
   valid_hours: '[4]'
 
 # Execution
