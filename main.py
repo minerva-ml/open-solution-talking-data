@@ -67,8 +67,8 @@ def _train(pipeline_name, dev_mode):
     data_hash_channel_send(ctx, 'Validation Data Hash', meta_valid_split)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
-        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
+        meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_TRAIN_SIZE, replace=False)
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_VALID_SIZE, replace=False)
 
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
@@ -114,7 +114,7 @@ def _evaluate(pipeline_name, dev_mode):
     data_hash_channel_send(ctx, 'Evaluation Data Hash', meta_valid_split)
 
     if dev_mode:
-        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_SIZE, replace=False)
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_VALID_SIZE, replace=False)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -157,7 +157,7 @@ def _predict(pipeline_name, dev_mode):
         meta_test = pd.read_csv(params.test_filepath,
                                 usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
                                 dtype=cfg.COLUMN_TYPES['inference'],
-                                nrows=cfg.DEV_SAMPLE_SIZE)
+                                nrows=cfg.DEV_SAMPLE_TEST_SIZE)
     else:
         meta_test = pd.read_csv(params.test_filepath,
                                 usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,

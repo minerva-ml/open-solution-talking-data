@@ -31,18 +31,15 @@ class DataFrameByTypeSplitter(BaseTransformer):
 
 
 class FeatureJoiner(BaseTransformer):
-    def __init__(self, return_df=True):
-        self.return_df = return_df
-
     def transform(self, numerical_feature_list, categorical_feature_list, **kwargs):
-        outputs = {}
+        features = numerical_feature_list + categorical_feature_list
+        for feature in features:
+            feature.reset_index(drop=True, inplace=True)
 
-        if self.return_df:
-            outputs['X'] = pd.concat(numerical_feature_list + categorical_feature_list, axis=1)
-            outputs['feature_names'] = self._get_feature_names(numerical_feature_list + categorical_feature_list)
-            outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
-        else:
-            raise NotImplementedError('only return_df=True is supported')
+        outputs = {}
+        outputs['features'] = pd.concat(features, axis=1)
+        outputs['feature_names'] = self._get_feature_names(features)
+        outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
         return outputs
 
     def _get_feature_names(self, dataframes):
@@ -52,10 +49,48 @@ class FeatureJoiner(BaseTransformer):
         return feature_names
 
 
-class BasicCategoricalEncoder(BaseTransformer):
+class CategoricalFilter(BaseTransformer):
+    def __init__(self, categorical_columns, min_frequencies, impute_value=np.nan):
+        self.categorical_columns = categorical_columns
+        self.min_frequencies = min_frequencies
+        self.impute_value = impute_value
+        self.category_levels_to_remove = {}
+
+    def fit(self, categorical_features):
+        for column, threshold in zip(self.categorical_columns, self.min_frequencies):
+            value_counts = categorical_features[column].value_counts()
+            self.category_levels_to_remove[column] = value_counts[value_counts <= threshold].index.tolist()
+        return self
+
+    def transform(self, categorical_features):
+        for column, levels_to_remove in self.category_levels_to_remove.items():
+            if levels_to_remove:
+                categorical_features[column].replace(levels_to_remove, self.impute_value, inplace=True)
+            categorical_features['{}_infrequent'.format(column)] = (
+                categorical_features[column] == self.impute_value).astype(int)
+        return {'categorical_features': categorical_features}
+
+    def load(self, filepath):
+        params = joblib.load(filepath)
+        self.categorical_columns = params['categorical_columns']
+        self.min_frequencies = params['min_frequencies']
+        self.impute_value = params['impute_value']
+        self.category_levels_to_remove = params['category_levels_to_remove']
+        return self
+
+    def save(self, filepath):
+        params = {}
+        params['categorical_columns'] = self.categorical_columns
+        params['min_frequencies'] = self.min_frequencies
+        params['impute_value'] = self.impute_value
+        params['category_levels_to_remove'] = self.category_levels_to_remove
+        joblib.dump(params, filepath)
+
+
+class TargetEncoder(BaseTransformer):
     def __init__(self, **kwargs):
         self.params = kwargs
-        self.encoder_class = None
+        self.encoder_class = ce.TargetEncoder
 
     def fit(self, X, y, **kwargs):
         categorical_columns = list(X.columns)
@@ -65,7 +100,7 @@ class BasicCategoricalEncoder(BaseTransformer):
 
     def transform(self, X, y=None, **kwargs):
         X_ = self.target_encoder.transform(X)
-        return {'X': X_}
+        return {'numerical_features': X_}
 
     def load(self, filepath):
         self.target_encoder = joblib.load(filepath)
@@ -75,26 +110,73 @@ class BasicCategoricalEncoder(BaseTransformer):
         joblib.dump(self.target_encoder, filepath)
 
 
-class TargetEncoder(BasicCategoricalEncoder):
+class BinaryEncoder(BaseTransformer):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.encoder_class = ce.TargetEncoder
-
-
-class BinaryEncoder(BasicCategoricalEncoder):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        self.params = kwargs
         self.encoder_class = ce.binary.BinaryEncoder
+
+    def fit(self, X, **kwargs):
+        categorical_columns = list(X.columns)
+        self.binary_encoder = self.encoder_class(cols=categorical_columns, **self.params)
+        self.binary_encoder.fit(X)
+        return self
+
+    def transform(self, X, **kwargs):
+        X_ = self.binary_encoder.transform(X)
+        return {'numerical_features': X_}
+
+    def load(self, filepath):
+        self.target_encoder = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.target_encoder, filepath)
+
+
+class TimeDelta(BaseTransformer):
+    def __init__(self, groupby_specs, timestamp_column):
+        self.groupby_specs = groupby_specs
+        self.timestamp_column = timestamp_column
+
+    @property
+    def time_delta_names(self):
+        time_delta_names = ['{}_time_delta'.format('_'.join(groupby_spec))
+                            for groupby_spec in self.groupby_specs]
+        return time_delta_names
+
+    @property
+    def is_null_names(self):
+        is_null_names = ['{}_is_nan'.format('_'.join(groupby_spec))
+                         for groupby_spec in self.groupby_specs]
+        return is_null_names
+
+    def transform(self, categorical_features, timestamp_features):
+        X = pd.concat([categorical_features, timestamp_features], axis=1)
+        for groupby_spec, time_delta_name, is_null_name in zip(self.groupby_specs,
+                                                               self.time_delta_names,
+                                                               self.is_null_names):
+            X[time_delta_name] = X.groupby(groupby_spec)[self.timestamp_column].apply(self._time_delta).reset_index(
+                level=list(range(len(groupby_spec))), drop=True)
+            X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
+            X[time_delta_name].fillna(0, inplace=True)
+        return {'numerical_features': X[self.time_delta_names],
+                'categorical_features': X[self.is_null_names]}
+
+    def _time_delta(self, groupby_object):
+        if len(groupby_object) == 1:
+            return pd.Series(np.nan, index=groupby_object.index)
+        else:
+            groupby_object = groupby_object.sort_values().diff().dt.seconds
+            return groupby_object
 
 
 class ConfidenceRate(BaseTransformer):
-
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level
         self.categories = categories
 
-    def transform(self, X, y):
-        concatenated_dataframe = pd.concat([X, y], axis=1)
+    def transform(self, categorical_features, target):
+        concatenated_dataframe = pd.concat([categorical_features, target], axis=1)
         new_features = []
 
         for category in self.categories:
@@ -110,7 +192,6 @@ class ConfidenceRate(BaseTransformer):
                 )[category + [new_feature]],
                 on=category, how='left'
             )
-
         return {'numerical_features': concatenated_dataframe[new_features]}
 
     def _rate_calculation(self, x):

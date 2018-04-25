@@ -12,6 +12,7 @@ __pycache__/
 .idea/
 .idea_modules/
 neptune_local.yaml
+neptune_random_search_local.yaml
 out/
 output
 output/
