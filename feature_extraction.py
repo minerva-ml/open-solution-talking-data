@@ -203,19 +203,19 @@ class ConfidenceRate(BaseTransformer):
 
         return self
 
-    def transform(self, X, **kwargs):
+    def transform(self, categorical_features, **kwargs):
 
         for category, confidence_rate_name, is_null_name in zip(self.categories,
                                                                 self.confidence_rate_names,
                                                                 self.is_null_names):
-            X = X.merge(self.confidence_rates_map['_'.join(category)],
+            categorical_features = categorical_features.merge(self.confidence_rates_map['_'.join(category)],
                         on=category,
                         how='left')
-            X[is_null_name] = pd.isnull(X[confidence_rate_name]).astype(int)
-            X[confidence_rate_name].fillna(0, inplace=True)
+            categorical_features[is_null_name] = pd.isnull(categorical_features[confidence_rate_name]).astype(int)
+            categorical_features[confidence_rate_name].fillna(0, inplace=True)
 
-        return {'numerical_features': X[self.confidence_rate_names],
-                'categorical_features': X[self.is_null_names]}
+        return {'numerical_features': categorical_features[self.confidence_rate_names],
+                'categorical_features': categorical_features[self.is_null_names]}
 
     def load(self, filepath):
         self.confidence_rates_map = joblib.load(filepath)
