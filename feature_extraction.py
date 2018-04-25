@@ -182,13 +182,12 @@ class GroupbyCounts(BaseTransformer):
             new_feature = '{}_counts'.format('_'.join(category))
             new_features.append(new_feature)
 
-            X[new_feature] = -1
             group_object = X.groupby(category)
-            X = X.drop([new_feature], axis=1)
 
-            X = X.merge(group_object[new_feature].apply(lambda x: x.count()).reset_index()[category + [new_feature]],
-                        on=category, how='left'
-                        )
+            X = X.merge(
+                group_object.size().reset_index().rename(index=str, columns={0: new_feature})[category + [new_feature]],
+                on=category, how='left'
+                )
 
         return {'numerical_features': X[new_features]}
 
