@@ -1,14 +1,17 @@
-from itertools import product
+import glob
+import hashlib
 import logging
+import os
 import random
 import sys
-import os
+from itertools import product
 
-from attrdict import AttrDict
-import glob
 import numpy as np
 import pandas as pd
 import yaml
+from attrdict import AttrDict
+from deepsense import neptune
+from tqdm import tqdm
 
 
 def read_yaml(filepath):
@@ -55,14 +58,6 @@ def read_params(ctx):
     return params
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
-
-
-def sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
-
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -98,17 +93,44 @@ def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, logger=None):
         train_chunk.to_csv(chunk_filepath, index=None)
 
 
-def read_csv_time_chunks(chunks_dir, days=[], hours=[], logger=None):
+def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None, logger=None):
     filepaths = []
     for day, hour in product(days, hours):
         filepaths.extend(glob.glob('{}/train_day{}_hour{}.csv'.format(chunks_dir, day, hour)))
     data_chunks = []
-    for filepath in filepaths:
+    for filepath in tqdm(filepaths):
+        data_chunk = pd.read_csv(filepath, usecols=usecols, dtype=dtype)
         if logger is not None:
-            logger.info('reading in {}'.format(filepath))
+            logger.info('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         else:
-            print('reading in {}'.format(filepath))
-        data_chunk = pd.read_csv(filepath)
+            print('read in chunk {} of shape {}'.format(filepath, data_chunk.shape))
         data_chunks.append(data_chunk)
-    data_chunks = pd.concat(data_chunks, axis=0)
+    data_chunks = pd.concat(data_chunks, axis=0).reset_index(drop=True)
+    data_chunks['click_time'] = pd.to_datetime(data_chunks['click_time'], format='%Y-%m-%d %H:%M:%S')
+
+    if logger is not None:
+        logger.info('combined dataset shape: {}'.format(data_chunks.shape))
+    else:
+        print('combined dataset shape: {}'.format(data_chunks.shape))
     return data_chunks
+
+
+def data_hash_channel_send(ctx, name, data):
+    hash_channel = ctx.create_channel(name=name, channel_type=neptune.ChannelType.TEXT)
+    data_hash = create_data_hash(data)
+    hash_channel.send(y=data_hash)
+
+
+def create_data_hash(data):
+    if isinstance(data, pd.DataFrame):
+        data_hash = hashlib.sha256(data.to_json().encode()).hexdigest()
+    else:
+        raise NotImplementedError('only pandas.DataFrame and pandas.Series are supported')
+    return str(data_hash)
+
+
+def safe_eval(obj):
+    try:
+        return eval(obj)
+    except Exception:
+        return obj

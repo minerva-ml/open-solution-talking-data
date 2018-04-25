@@ -1,18 +1,18 @@
+import json
 import re
 import string
 
-import json
+import nltk
 import numpy as np
 import pandas as pd
-
+import sklearn.decomposition as decomp
+import sklearn.preprocessing as sk_prep
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.tokenize import TweetTokenizer
 from sklearn.externals import joblib
 from sklearn.feature_extraction import text
-import sklearn.preprocessing as sk_prep
-import sklearn.decomposition as decomp
-import nltk
-from nltk.tokenize import TweetTokenizer
-from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.corpus import stopwords
+
 from .base import BaseTransformer
 
 lem = WordNetLemmatizer()

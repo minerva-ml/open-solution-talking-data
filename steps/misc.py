@@ -1,5 +1,5 @@
-from attrdict import AttrDict
 import lightgbm as lgb
+from attrdict import AttrDict
 from sklearn.externals import joblib
 
 from steps.base import BaseTransformer
@@ -9,12 +9,22 @@ logger = get_logger()
 
 
 class LightGBM(BaseTransformer):
-    def __init__(self, model_config, training_config):
-        self.model_config = AttrDict(model_config)
-        self.training_config = AttrDict(training_config)
+    def __init__(self, **params):
+        self.params = params
+        self.training_params = ['number_boosting_rounds', 'early_stopping_rounds']
         self.evaluation_function = None
 
-    def fit(self, X, y, X_valid, y_valid, feature_names, categorical_features, **kwargs):
+    @property
+    def model_config(self):
+        return AttrDict({param: value for param, value in self.params.items()
+                         if param not in self.training_params})
+
+    @property
+    def training_config(self):
+        return AttrDict({param: value for param, value in self.params.items()
+                         if param in self.training_params})
+
+    def fit(self, X, y, X_valid, y_valid, feature_names=None, categorical_features=None, **kwargs):
         train = lgb.Dataset(X, label=y,
                             feature_name=feature_names,
                             categorical_feature=categorical_features

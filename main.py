@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 import pipeline_config as cfg
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, \
-    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks
+    save_evaluation_predictions, read_csv_time_chunks, cut_data_in_time_chunks, data_hash_channel_send
 
 set_seed(1234)
 logger = init_logger()
@@ -51,11 +51,24 @@ def _train(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_train_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=TRAIN_DAYS, hours=TRAIN_HOURS,
+                                            days=TRAIN_DAYS,
+                                            hours=TRAIN_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
+
+    data_hash_channel_send(ctx, 'Training Data Hash', meta_train_split)
+    data_hash_channel_send(ctx, 'Validation Data Hash', meta_valid_split)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(cfg.DEV_SAMPLE_TRAIN_SIZE, replace=False)
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_VALID_SIZE, replace=False)
 
     logger.info('Target distribution in train: {}'.format(meta_train_split['is_attributed'].mean()))
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
@@ -92,8 +105,16 @@ def _evaluate(pipeline_name, dev_mode):
         VALID_DAYS, VALID_HOURS = eval(params.valid_days), eval(params.valid_hours)
 
     meta_valid_split = read_csv_time_chunks(params.train_chunks_dir,
-                                            days=VALID_DAYS, hours=VALID_HOURS,
+                                            days=VALID_DAYS,
+                                            hours=VALID_HOURS,
+                                            usecols=cfg.FEATURE_COLUMNS + cfg.TARGET_COLUMNS,
+                                            dtype=cfg.COLUMN_TYPES['train'],
                                             logger=logger)
+
+    data_hash_channel_send(ctx, 'Evaluation Data Hash', meta_valid_split)
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(cfg.DEV_SAMPLE_VALID_SIZE, replace=False)
 
     logger.info('Target distribution in valid: {}'.format(meta_valid_split['is_attributed'].mean()))
 
@@ -133,9 +154,16 @@ def predict(pipeline_name, dev_mode, chunk_size):
 def _predict(pipeline_name, dev_mode):
     logger.info('reading data in')
     if dev_mode:
-        meta_test = pd.read_csv(params.test_filepath, nrows=int(10e4))
+        meta_test = pd.read_csv(params.test_filepath,
+                                usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                                dtype=cfg.COLUMN_TYPES['inference'],
+                                nrows=cfg.DEV_SAMPLE_TEST_SIZE)
     else:
-        meta_test = pd.read_csv(params.test_filepath)
+        meta_test = pd.read_csv(params.test_filepath,
+                                usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                                dtype=cfg.COLUMN_TYPES['inference'])
+
+    data_hash_channel_send(ctx, 'Test Data Hash', meta_test)
 
     data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
                       'y': None,
@@ -190,11 +218,11 @@ def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
 def train_evaluate_predict(pipeline_name, dev_mode, chunk_size):
-    logger.info('training')
+    logger.info('TRAINING')
     _train(pipeline_name, dev_mode)
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
-    logger.info('predicting')
+    logger.info('PREDICTION')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
     else:
@@ -207,9 +235,9 @@ def train_evaluate_predict(pipeline_name, dev_mode, chunk_size):
 @click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
               required=False)
 def evaluate_predict(pipeline_name, dev_mode, chunk_size):
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
-    logger.info('predicting')
+    logger.info('PREDICTION')
     if chunk_size is not None:
         _predict_in_chunks(pipeline_name, dev_mode, chunk_size)
     else:
@@ -220,9 +248,9 @@ def evaluate_predict(pipeline_name, dev_mode, chunk_size):
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
 def train_evaluate(pipeline_name, dev_mode):
-    logger.info('training')
+    logger.info('TRAINING')
     _train(pipeline_name, dev_mode)
-    logger.info('evaluate')
+    logger.info('EVALUATION')
     _evaluate(pipeline_name, dev_mode)
 
 
