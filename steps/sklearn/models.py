@@ -1,6 +1,5 @@
-import numpy as np
-
 import lightgbm as lgb
+import numpy as np
 import sklearn.linear_model as lr
 from attrdict import AttrDict
 from catboost import CatBoostClassifier

@@ -1,17 +1,17 @@
-from itertools import product
+import glob
 import hashlib
 import logging
+import os
 import random
 import sys
-import os
+from itertools import product
 
-from attrdict import AttrDict
-from deepsense import neptune
-import glob
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import yaml
+from attrdict import AttrDict
+from deepsense import neptune
+from tqdm import tqdm
 
 
 def read_yaml(filepath):
