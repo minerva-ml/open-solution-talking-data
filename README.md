@@ -5,11 +5,23 @@ This is an open solution to the [TalkingData Challenge](https://www.kaggle.com/c
 ## Goal
 Deliver open source, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
 
-## Installation
+## Usage: Fast Track
 1. clone this repository: `git clone https://github.com/neptune-ml/open-solution-talking-data.git`
-1. install [PyTorch](http://pytorch.org/)
+1. install requirements
+1. register to [Neptune](https://neptune.ml/ 'machine learning lab') *(if you wish to use it)*
+1. run experiment:
+```bash
+$ neptune login
+$ neptune experiment send --worker gcp-large --environment base-cpu-py3 main.py train_evaluate_predict --pipeline_name solution_1
+```
+collect submit from `/output/solution-1` directory.
+
+## Usage: Detailed
+1. clone this repository: `git clone https://github.com/neptune-ml/open-solution-talking-data.git`
+1. install [PyTorch](http://pytorch.org/) and `torchvision`
 1. install requirements: `pip3 install -r requirements.txt`
 1. register to [Neptune](https://neptune.ml/ 'machine learning lab') *(if you wish to use it)*
+1. open [Neptune](https://neptune.ml/ 'machine learning lab') and create new project called: `talking-data` with project key: `TDAT`
 1. run experiment:
 ```bash
 $ neptune login
