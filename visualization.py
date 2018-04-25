@@ -1,8 +1,8 @@
 import io
-import numpy as np
 
 import PIL
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_curve, roc_auc_score
 

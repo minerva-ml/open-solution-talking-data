@@ -1,11 +1,12 @@
 from functools import partial
+
 from sklearn.metrics import roc_auc_score
 
+import feature_extraction as fe
+from hyperparameter_tuning import RandomSearchOptimizer, NeptuneMonitor, SaveResults
 from steps.adapters import to_numpy_label_inputs, identity_inputs
 from steps.base import Step, Dummy
 from steps.misc import LightGBM
-import feature_extraction as fe
-from hyperparameter_tuning import RandomSearchOptimizer, NeptuneMonitor, SaveResults
 
 
 def baseline(config, train_mode):

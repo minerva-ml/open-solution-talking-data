@@ -1,9 +1,9 @@
 import json
-import numpy as np
 import re
 import string
 
 import nltk
+import numpy as np
 import pandas as pd
 import sklearn.decomposition as decomp
 import sklearn.preprocessing as sk_prep
