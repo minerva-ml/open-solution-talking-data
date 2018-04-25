@@ -174,25 +174,55 @@ class ConfidenceRate(BaseTransformer):
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level
         self.categories = categories
+        self.confidence_rates_map = {}
 
-    def transform(self, categorical_features, target):
+    @property
+    def confidence_rate_names(self):
+        confidence_rate_names = ['{}_confidence_rate'.format('_'.join(category))
+                                 for category in self.categories]
+        return confidence_rate_names
+
+    @property
+    def is_null_names(self):
+        is_null_names = ['confidence_rate_is_nan_{}'.format('_'.join(category))
+                         for category in self.categories]
+        return is_null_names
+
+    def fit(self, categorical_features, target):
         concatenated_dataframe = pd.concat([categorical_features, target], axis=1)
-        new_features = []
 
         for category in self.categories:
             new_feature = '{}_confidence_rate'.format('_'.join(category))
-            new_features.append(new_feature)
 
             group_object = concatenated_dataframe.groupby(category)
 
-            concatenated_dataframe = concatenated_dataframe.merge(
-                group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
-                    index=str,
-                    columns={'is_attributed': new_feature}
-                )[category + [new_feature]],
-                on=category, how='left'
-            )
-        return {'numerical_features': concatenated_dataframe[new_features]}
+            self.confidence_rates_map['_'.join(category)] = \
+            group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
+                index=str,
+                columns={'is_attributed': new_feature})[category + [new_feature]]
+
+        return self
+
+    def transform(self, X, **kwargs):
+
+        for category, confidence_rate_name, is_null_name in zip(self.categories,
+                                                                self.confidence_rate_names,
+                                                                self.is_null_names):
+            X = X.merge(self.confidence_rates_map['_'.join(category)],
+                        on=category,
+                        how='left')
+            X[is_null_name] = pd.isnull(X[confidence_rate_name]).astype(int)
+            X[confidence_rate_name].fillna(0, inplace=True)
+
+        return {'numerical_features': X[self.confidence_rate_names],
+                'categorical_features': X[self.is_null_names]}
+
+    def load(self, filepath):
+        self.confidence_rates_map = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.confidence_rates_map, filepath)
 
     def _rate_calculation(self, x):
         rate = x.sum() / float(x.count())
