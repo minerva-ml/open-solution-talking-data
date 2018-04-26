@@ -163,6 +163,8 @@ def _predict(pipeline_name, dev_mode):
                                 usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
                                 dtype=cfg.COLUMN_TYPES['inference'])
 
+    meta_test['click_time'] = pd.to_datetime(meta_test['click_time'], format='%Y-%m-%d %H:%M:%S')
+
     data_hash_channel_send(ctx, 'Test Data Hash', meta_test)
 
     data = {'input': {'X': meta_test[cfg.FEATURE_COLUMNS],
@@ -188,6 +190,9 @@ def _predict(pipeline_name, dev_mode):
 def _predict_in_chunks(pipeline_name, dev_mode, chunk_size):
     submission_chunks = []
     for meta_test_chunk in pd.read_csv(params.test_filepath, chunksize=chunk_size):
+
+        meta_test_chunk['click_time'] = pd.to_datetime(meta_test_chunk['click_time'], format='%Y-%m-%d %H:%M:%S')
+
         data = {'input': {'meta': meta_test_chunk,
                           },
                 }
