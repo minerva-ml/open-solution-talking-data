@@ -12,7 +12,7 @@ Deliver open source, ready-to-use and extendable solution to this competition. T
 1. run experiment:
 ```bash
 $ neptune login
-$ neptune experiment send --config neptune_random_search.yaml --worker gcp-large --environment base-cpu-py3 main.py train_evaluate_predict --pipeline_name solution_1
+$ neptune experiment send --config neptune.yaml --worker gcp-large --environment base-cpu-py3 main.py train_evaluate_predict --pipeline_name solution_1
 ```
 collect submit from `/output/solution-1` directory.
 
@@ -25,7 +25,7 @@ collect submit from `/output/solution-1` directory.
 1. run experiment:
 ```bash
 $ neptune login
-$ neptune experiment send --worker gcp-large --environment base-cpu-py3 main.py train_evaluate_predict --pipeline_name solution_1
+$ neptune experiment send --config neptune.yaml --worker gcp-large --environment base-cpu-py3 main.py train_evaluate_predict --pipeline_name solution_1
 ```
 collect submit from `/output/solution-1` directory.
 
