@@ -170,6 +170,28 @@ class TimeDelta(BaseTransformer):
             return groupby_object
 
 
+class GroupbyCounts(BaseTransformer):
+
+    def __init__(self, categories=[]):
+        self.categories = categories
+
+    def transform(self, X, y):
+        new_features = []
+
+        for category in self.categories:
+            new_feature = '{}_counts'.format('_'.join(category))
+            new_features.append(new_feature)
+
+            group_object = X.groupby(category)
+
+            X = X.merge(
+                group_object.size().reset_index().rename(index=str, columns={0: new_feature})[category + [new_feature]],
+                on=category, how='left'
+                )
+
+        return {'numerical_features': X[new_features]}
+
+
 class ConfidenceRate(BaseTransformer):
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level
