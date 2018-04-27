@@ -140,13 +140,13 @@ class TimeDelta(BaseTransformer):
 
     @property
     def time_delta_names(self):
-        time_delta_names = ['{}_time_delta'.format('_'.join(groupby_spec))
+        time_delta_names = ['time_delta_{}'.format('_'.join(groupby_spec))
                             for groupby_spec in self.groupby_specs]
         return time_delta_names
 
     @property
     def is_null_names(self):
-        is_null_names = ['{}_is_nan'.format('_'.join(groupby_spec))
+        is_null_names = ['time_delta_is_nan_{}'.format('_'.join(groupby_spec))
                          for groupby_spec in self.groupby_specs]
         return is_null_names
 
@@ -196,25 +196,53 @@ class ConfidenceRate(BaseTransformer):
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level
         self.categories = categories
+        self.confidence_rates_map = {}
 
-    def transform(self, categorical_features, target):
+    @property
+    def confidence_rate_names(self):
+        confidence_rate_names = ['confidence_rate_{}'.format('_'.join(category))
+                                 for category in self.categories]
+        return confidence_rate_names
+
+    @property
+    def is_null_names(self):
+        is_null_names = ['confidence_rate_is_nan_{}'.format('_'.join(category))
+                         for category in self.categories]
+        return is_null_names
+
+    def fit(self, categorical_features, target):
         concatenated_dataframe = pd.concat([categorical_features, target], axis=1)
-        new_features = []
 
-        for category in self.categories:
-            new_feature = '{}_confidence_rate'.format('_'.join(category))
-            new_features.append(new_feature)
-
+        for category, confidence_rate_name in zip(self.categories, self.confidence_rate_names):
             group_object = concatenated_dataframe.groupby(category)
 
-            concatenated_dataframe = concatenated_dataframe.merge(
+            self.confidence_rates_map['_'.join(category)] = \
                 group_object['is_attributed'].apply(self._rate_calculation).reset_index().rename(
                     index=str,
-                    columns={'is_attributed': new_feature}
-                )[category + [new_feature]],
-                on=category, how='left'
-            )
-        return {'numerical_features': concatenated_dataframe[new_features]}
+                    columns={'is_attributed': confidence_rate_name})[category + [confidence_rate_name]]
+
+        return self
+
+    def transform(self, categorical_features, **kwargs):
+
+        for category, confidence_rate_name, is_null_name in zip(self.categories,
+                                                                self.confidence_rate_names,
+                                                                self.is_null_names):
+            categorical_features = categorical_features.merge(self.confidence_rates_map['_'.join(category)],
+                                                              on=category,
+                                                              how='left')
+            categorical_features[is_null_name] = pd.isnull(categorical_features[confidence_rate_name]).astype(int)
+            categorical_features[confidence_rate_name].fillna(0, inplace=True)
+
+        return {'numerical_features': categorical_features[self.confidence_rate_names],
+                'categorical_features': categorical_features[self.is_null_names]}
+
+    def load(self, filepath):
+        self.confidence_rates_map = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.confidence_rates_map, filepath)
 
     def _rate_calculation(self, x):
         rate = x.sum() / float(x.count())
