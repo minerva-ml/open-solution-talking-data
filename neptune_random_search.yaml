@@ -1,7 +1,7 @@
 project: TDAT
 
 name: talking data
-tags: [solution_1, train_subset, random_search]
+tags: [solution-1]
 
 metric:
   channel: 'ROC_AUC'
