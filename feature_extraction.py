@@ -165,11 +165,11 @@ class TargetEncoderNSplits(BaseTransformer):
                 'categorical_features': categorical_features[self._is_null_names(columns)]}
 
     def load(self, filepath):
-        self.target_encoder = joblib.load(filepath)
+        self.target_means_map = joblib.load(filepath)
         return self
 
     def save(self, filepath):
-        joblib.dump(self.target_encoder, filepath)
+        joblib.dump(self.target_means_map, filepath)
 
 
 class BinaryEncoder(BaseTransformer):

@@ -505,4 +505,6 @@ PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),
                           'inference': partial(baseline, train_mode=False)},
              'solution_1': {'train': partial(solution_1, train_mode=True),
                             'inference': partial(solution_1, train_mode=False)},
+             'solution_2': {'train': partial(solution_2, train_mode=True),
+                            'inference': partial(solution_2, train_mode=False)},
              }
