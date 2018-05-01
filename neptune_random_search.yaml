@@ -37,8 +37,7 @@ parameters:
   verbose: 1
 
 # Preprocessing
-  target_encoder__min_samples_leaf: 1
-  target_encoder__smoothing: 1
+  target_encoder__n_splits: 10
 
 # Light GBM
   lgbm_random_search_runs: 100
