@@ -1,4 +1,5 @@
 import os
+import gc
 import pprint
 import shutil
 
@@ -106,6 +107,10 @@ class Step:
             else:
                 step_inputs = self.unpack(step_inputs)
             step_output_data = self._cached_fit_transform(step_inputs)
+
+            del step_inputs
+        del data
+        gc.collect()
         return step_output_data
 
     def _cached_fit_transform(self, step_inputs):
@@ -155,6 +160,10 @@ class Step:
             else:
                 step_inputs = self.unpack(step_inputs)
             step_output_data = self._cached_transform(step_inputs)
+
+            del step_inputs
+        del data
+        gc.collect()
         return step_output_data
 
     def _cached_transform(self, step_inputs):
