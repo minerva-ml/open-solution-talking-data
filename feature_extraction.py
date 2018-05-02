@@ -255,6 +255,24 @@ class GroupbyAggregations(BaseTransformer):
         return {'numerical_features': categorical_features[self.groupby_aggregations_names]}
 
 
+class Blacklist(BaseTransformer):
+
+    def __init__(self, blacklist):
+        self.blacklist = blacklist
+
+    @property
+    def blacklist_names(self):
+        blacklist_names = ['{}_on_blacklist'.format(category) for category in self.blacklist]
+        return blacklist_names
+
+    def transform(self, categorical_features):
+        for category, blacklist_name in zip(self.blacklist, self.blacklist_names):
+            categorical_features[blacklist_name] = (
+                categorical_features[category].isin(self.blacklist[category])).astype(int)
+
+        return {'categorical_features': categorical_features[self.blacklist_names]}
+
+
 class ConfidenceRate(BaseTransformer):
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level

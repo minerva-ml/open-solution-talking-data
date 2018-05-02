@@ -66,6 +66,14 @@ SOLUTION_CONFIG = AttrDict({
         {'groupby': ['ip','os','channel'], 'select': 'device', 'agg': 'var'}
     ]},
 
+    'blacklist': {'blacklist': {'ip': [299172, 144604, 135992, 49386, 151908],
+                                'app': [151, 56, 183, 93],
+                                'device': [5, 182, 1728],
+                                'os': [56, 65, 39, 79, 97],
+                                'channel': [404, 420, 474]
+                                }
+                  },
+
     'confidence_rate': {'categories': [['app', 'os'], ['os', 'ip']],
                         'confidence_level': 100},
 
