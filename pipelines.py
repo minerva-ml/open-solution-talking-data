@@ -6,7 +6,7 @@ import feature_extraction as fe
 from hyperparameter_tuning import RandomSearchOptimizer, NeptuneMonitor, SaveResults
 from steps.adapters import to_numpy_label_inputs, identity_inputs
 from steps.base import Step, Dummy
-from steps.misc import LightGBM
+from models import LightGBMLowMemory as LightGBM
 
 
 def baseline(config, train_mode):
@@ -47,7 +47,7 @@ def solution_1(config, train_mode):
 def solution_2(config, train_mode):
     if train_mode:
         features, features_valid = feature_extraction_v2(config, train_mode,
-                                                         save_output=True, cache_output=True, load_saved_output=False)
+                                                         save_output=True, cache_output=True, load_saved_output=True)
         light_gbm = classifier_lgbm((features, features_valid), config, train_mode)
     else:
         features = feature_extraction_v2(config, train_mode, cache_output=True)

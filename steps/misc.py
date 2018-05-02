@@ -25,18 +25,14 @@ class LightGBM(BaseTransformer):
                          if param in self.training_params})
 
     def fit(self, X, y, X_valid, y_valid, feature_names=None, categorical_features=None, **kwargs):
-        train = lgb.Dataset(X, label=y,
-                            feature_name=feature_names,
-                            categorical_feature=categorical_features
-                            )
-        valid = lgb.Dataset(X_valid, label=y_valid,
-                            feature_name=feature_names,
-                            categorical_feature=categorical_features
-                            )
+        train = lgb.Dataset(X, label=y)
+        valid = lgb.Dataset(X_valid, label=y_valid)
 
         evaluation_results = {}
         self.estimator = lgb.train(self.model_config,
                                    train, valid_sets=[train, valid], valid_names=['train', 'valid'],
+                                   feature_name=feature_names,
+                                   categorical_feature=categorical_features,
                                    evals_result=evaluation_results,
                                    num_boost_round=self.training_config.number_boosting_rounds,
                                    early_stopping_rounds=self.training_config.early_stopping_rounds,
