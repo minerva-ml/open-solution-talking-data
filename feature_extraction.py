@@ -234,7 +234,6 @@ class TimeDelta(BaseTransformer):
 
 
 class GroupbyAggregations(BaseTransformer):
-
     def __init__(self, groupby_aggregations):
         self.groupby_aggregations = groupby_aggregations
 
@@ -251,8 +250,7 @@ class GroupbyAggregations(BaseTransformer):
             categorical_features = categorical_features.merge(
                 group_object[spec['select']].agg(spec['agg']).reset_index().rename(index=str, columns={
                     spec['select']: groupby_aggregations_name})[spec['groupby'] + [groupby_aggregations_name]],
-                on=spec['groupby'], how='left'
-                )
+                on=spec['groupby'], how='left').astype(np.float32)
 
         return {'numerical_features': categorical_features[self.groupby_aggregations_names]}
 
