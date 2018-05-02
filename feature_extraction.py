@@ -1,6 +1,7 @@
 import category_encoders as ce
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import KFold
 from sklearn.externals import joblib
 
 from steps.base import BaseTransformer
@@ -37,7 +38,7 @@ class FeatureJoiner(BaseTransformer):
             feature.reset_index(drop=True, inplace=True)
 
         outputs = {}
-        outputs['features'] = pd.concat(features, axis=1)
+        outputs['features'] = pd.concat(features, axis=1).astype(np.float32)
         outputs['feature_names'] = self._get_feature_names(features)
         outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
         return outputs
@@ -66,8 +67,9 @@ class CategoricalFilter(BaseTransformer):
         for column, levels_to_remove in self.category_levels_to_remove.items():
             if levels_to_remove:
                 categorical_features[column].replace(levels_to_remove, self.impute_value, inplace=True)
-            categorical_features['{}_infrequent'.format(column)] = (
-                categorical_features[column] == self.impute_value).astype(int)
+            categorical_features['{}_infrequent'.format(column)] = categorical_features[column] == self.impute_value
+            categorical_features['{}_infrequent'.format(column)] = categorical_features[
+                '{}_infrequent'.format(column)].astype(int)
         return {'categorical_features': categorical_features}
 
     def load(self, filepath):
@@ -108,6 +110,67 @@ class TargetEncoder(BaseTransformer):
 
     def save(self, filepath):
         joblib.dump(self.target_encoder, filepath)
+
+
+class TargetEncoderNSplits(BaseTransformer):
+    def __init__(self, n_splits, **kwargs):
+        self.k_folds = KFold(n_splits=n_splits)
+        self.target_means_map = {}
+
+    def _target_means_names(self, columns):
+        confidence_rate_names = ['target_mean_{}'.format(column) for column in columns]
+        return confidence_rate_names
+
+    def _is_null_names(self, columns):
+        is_null_names = ['target_mean_is_nan_{}'.format(column) for column in columns]
+        return is_null_names
+
+    def fit(self, categorical_features, target, **kwargs):
+        feature_columns, target_column = categorical_features.columns, target.columns[0]
+
+        X_target_means = []
+        self.k_folds.get_n_splits(target)
+        for train_index, test_index in self.k_folds.split(target):
+            X_train, y_train = categorical_features.iloc[train_index], target.iloc[train_index]
+            X_test, y_test = categorical_features.iloc[test_index], target.iloc[test_index]
+
+            train = pd.concat([X_train, y_train], axis=1)
+            for column, target_mean_name in zip(feature_columns, self._target_means_names(feature_columns)):
+                group_object = train.groupby(column)
+                train_target_means = group_object[target_column].mean(). \
+                    reset_index().rename(index=str, columns={target_column: target_mean_name})
+
+                X_test = X_test.merge(train_target_means, on=column, how='left')
+            X_target_means.append(X_test)
+        X_target_means = pd.concat(X_target_means, axis=0).astype(np.float32)
+
+        for column, target_mean_name in zip(feature_columns, self._target_means_names(feature_columns)):
+            group_object = X_target_means.groupby(column)
+            self.target_means_map[column] = group_object[target_mean_name].mean().reset_index()
+
+        return self
+
+    def transform(self, categorical_features, **kwargs):
+        columns = categorical_features.columns
+
+        for column, target_mean_name, is_null_name in zip(columns,
+                                                          self._target_means_names(columns),
+                                                          self._is_null_names(columns)):
+            categorical_features = categorical_features.merge(self.target_means_map[column],
+                                                              on=column,
+                                                              how='left').astype(np.float32)
+            categorical_features[is_null_name] = pd.isnull(categorical_features[target_mean_name]).astype(int)
+            categorical_features[target_mean_name].fillna(0, inplace=True)
+
+        return {'numerical_features': categorical_features[self._target_means_names(columns)],
+                'categorical_features': categorical_features[self._is_null_names(columns)]}
+
+    def load(self, filepath):
+        self.target_means_map = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.target_means_map, filepath)
 
 
 class BinaryEncoder(BaseTransformer):
@@ -156,7 +219,7 @@ class TimeDelta(BaseTransformer):
                                                                self.time_delta_names,
                                                                self.is_null_names):
             X[time_delta_name] = X.groupby(groupby_spec)[self.timestamp_column].apply(self._time_delta).reset_index(
-                level=list(range(len(groupby_spec))), drop=True)
+                level=list(range(len(groupby_spec))), drop=True).astype(np.float32)
             X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
             X[time_delta_name].fillna(0, inplace=True)
         return {'numerical_features': X[self.time_delta_names],
@@ -168,6 +231,46 @@ class TimeDelta(BaseTransformer):
         else:
             groupby_object = groupby_object.sort_values().diff().dt.seconds
             return groupby_object
+
+
+class GroupbyAggregations(BaseTransformer):
+    def __init__(self, groupby_aggregations):
+        self.groupby_aggregations = groupby_aggregations
+
+    @property
+    def groupby_aggregations_names(self):
+        groupby_aggregations_names = ['{}_{}_{}'.format('_'.join(spec['groupby']), spec['agg'], spec['select'])
+                                      for spec in self.groupby_aggregations]
+        return groupby_aggregations_names
+
+    def transform(self, categorical_features):
+        for spec, groupby_aggregations_name in zip(self.groupby_aggregations, self.groupby_aggregations_names):
+            group_object = categorical_features.groupby(spec['groupby'])
+
+            categorical_features = categorical_features.merge(
+                group_object[spec['select']].agg(spec['agg']).reset_index().rename(index=str, columns={
+                    spec['select']: groupby_aggregations_name})[spec['groupby'] + [groupby_aggregations_name]],
+                on=spec['groupby'], how='left').astype(np.float32)
+
+        return {'numerical_features': categorical_features[self.groupby_aggregations_names]}
+
+
+class Blacklist(BaseTransformer):
+
+    def __init__(self, blacklist):
+        self.blacklist = blacklist
+
+    @property
+    def blacklist_names(self):
+        blacklist_names = ['{}_on_blacklist'.format(category) for category in self.blacklist]
+        return blacklist_names
+
+    def transform(self, categorical_features):
+        for category, blacklist_name in zip(self.blacklist, self.blacklist_names):
+            categorical_features[blacklist_name] = (
+                categorical_features[category].isin(self.blacklist[category])).astype(int)
+
+        return {'categorical_features': categorical_features[self.blacklist_names]}
 
 
 class ConfidenceRate(BaseTransformer):
@@ -208,7 +311,7 @@ class ConfidenceRate(BaseTransformer):
                                                                 self.is_null_names):
             categorical_features = categorical_features.merge(self.confidence_rates_map['_'.join(category)],
                                                               on=category,
-                                                              how='left')
+                                                              how='left').astype(np.float32)
             categorical_features[is_null_name] = pd.isnull(categorical_features[confidence_rate_name]).astype(int)
             categorical_features[confidence_rate_name].fillna(0, inplace=True)
 

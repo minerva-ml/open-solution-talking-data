@@ -11,12 +11,15 @@ params = read_params(ctx)
 FEATURE_COLUMNS = ['ip', 'app', 'device', 'os', 'channel', 'click_time']
 TARGET_COLUMNS = ['is_attributed']
 CV_COLUMNS = ['click_time']
+TIMESTAMP_COLUMN = 'click_time'
 ID_COLUMN = ['click_id']
 
-DEV_TRAIN_DAYS = [8]
-DEV_TRAIN_HOURS = [4, 5]
-DEV_VALID_DAYS = [9]
-DEV_VALID_HOURS = [4]
+DEV_TRAIN_DAYS_HOURS = {8: [4, 5]
+                        }
+DEV_VALID_DAYS_HOURS = {9: [4]
+                        }
+DEV_TEST_DAYS_HOURS = {10: [4]
+                       }
 DEV_SAMPLE_TRAIN_SIZE = int(20e4)
 DEV_SAMPLE_VALID_SIZE = int(10e4)
 DEV_SAMPLE_TEST_SIZE = int(10e3)
@@ -54,19 +57,35 @@ SOLUTION_CONFIG = AttrDict({
                                    'timestamp_columns': ['click_time'],
                                    },
 
-    'time_delta': {'groupby_specs': [['app', 'os'], ['os', 'ip']],
+    'time_delta': {'groupby_specs': [['ip', 'app', 'device', 'os']],
                    'timestamp_column': 'click_time'
                    },
 
-    'confidence_rate': {'categories': [['app', 'os'], ['os', 'ip']],
-                        'confidence_level': 100},
+    'groupby_aggregation': {'groupby_aggregations': [
+        {'groupby': ['ip'], 'select': 'app', 'agg': 'count'},
+        {'groupby': ['ip', 'app'], 'select': 'device', 'agg': 'count'},
+        {'groupby': ['ip'], 'select': 'app', 'agg': 'nunique'},
+        {'groupby': ['ip'], 'select': 'channel', 'agg': 'nunique'},
+        {'groupby': ['ip', 'device', 'os'], 'select': 'app', 'agg': 'nunique'}
+    ]},
+
+    'blacklist': {'blacklist': {'ip': [299172, 144604, 135992, 49386, 151908],
+                                'app': [151, 56, 183, 93],
+                                'device': [5, 182, 1728],
+                                'os': [56, 65, 39, 79, 97],
+                                'channel': [404, 420, 474]
+                                }
+                  },
+
+    'confidence_rate': {'categories': [['ip'], ['app'], ['ip', 'os'], ['app', 'os'], ['app', 'channel'],
+                                       ['os', 'channel'], ['device', 'channel'], ['app', 'device']],
+                        'confidence_level': 10000},
 
     'categorical_filter': {'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
                            'min_frequencies': [20, 10, 10, 10, 10],
                            'impute_value': -1
                            },
-    'target_encoder': {'min_samples_leaf': safe_eval(params.target_encoder__min_samples_leaf),
-                       'smoothing': safe_eval(params.target_encoder__smoothing)
+    'target_encoder': {'n_splits': safe_eval(params.target_encoder__n_splits),
                        },
     'light_gbm': {'boosting_type': safe_eval(params.lgbm__boosting_type),
                   'objective': safe_eval(params.lgbm__objective),

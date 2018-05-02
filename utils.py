@@ -79,12 +79,12 @@ def save_evaluation_predictions(experiment_dir, y_true, y_pred, raw_data):
     raw_data.to_csv(filepath, index=None)
 
 
-def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, logger=None):
+def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, prefix='chunk', logger=None):
     data[timestamp_column] = pd.to_datetime(data[timestamp_column], format='%Y-%m-%d %H:%M:%S')
     times = pd.DatetimeIndex(data[timestamp_column])
     grouped_train = data.groupby([times.day, times.hour])
     for (day, hour), train_chunk in grouped_train:
-        chunk_filename = 'train_day{}_hour{}.csv'.format(day, hour)
+        chunk_filename = '{}_day{}_hour{}.csv'.format(prefix, day, hour)
         if logger is not None:
             logger.info('saving {}'.format(chunk_filename))
         else:
@@ -93,10 +93,11 @@ def cut_data_in_time_chunks(data, timestamp_column, chunks_dir, logger=None):
         train_chunk.to_csv(chunk_filepath, index=None)
 
 
-def read_csv_time_chunks(chunks_dir, days=[], hours=[], usecols=None, dtype=None, logger=None):
+def read_csv_time_chunks(chunks_dir, prefix='chunk', days_hours={}, usecols=None, dtype=None, logger=None):
     filepaths = []
-    for day, hour in product(days, hours):
-        filepaths.extend(glob.glob('{}/train_day{}_hour{}.csv'.format(chunks_dir, day, hour)))
+    for day, hours in days_hours.items():
+        for hour in hours:
+            filepaths.extend(glob.glob('{}/{}_day{}_hour{}.csv'.format(chunks_dir, prefix, day, hour)))
     data_chunks = []
     for filepath in tqdm(filepaths):
         data_chunk = pd.read_csv(filepath, usecols=usecols, dtype=dtype)
@@ -134,3 +135,12 @@ def safe_eval(obj):
         return eval(obj)
     except Exception:
         return obj
+
+
+def get_submission_hours_index(meta, timestamp_column, submission_hours):
+    times = pd.DatetimeIndex(meta[timestamp_column])
+    filtered_indeces = []
+    for hour in submission_hours:
+        chunk = np.where(times.hour == hour)
+        filtered_indeces.extend(chunk[0])
+    return filtered_indeces
