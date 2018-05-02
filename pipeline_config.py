@@ -11,12 +11,15 @@ params = read_params(ctx)
 FEATURE_COLUMNS = ['ip', 'app', 'device', 'os', 'channel', 'click_time']
 TARGET_COLUMNS = ['is_attributed']
 CV_COLUMNS = ['click_time']
+TIMESTAMP_COLUMN = 'click_time'
 ID_COLUMN = ['click_id']
 
-DEV_TRAIN_DAYS = [8]
-DEV_TRAIN_HOURS = [4, 5]
-DEV_VALID_DAYS = [9]
-DEV_VALID_HOURS = [4]
+DEV_TRAIN_DAYS_HOURS = {8: [4, 5]
+                        }
+DEV_VALID_DAYS_HOURS = {9: [4]
+                        }
+DEV_TEST_DAYS_HOURS = {10: [4]
+                       }
 DEV_SAMPLE_TRAIN_SIZE = int(20e4)
 DEV_SAMPLE_VALID_SIZE = int(10e4)
 DEV_SAMPLE_TEST_SIZE = int(10e3)
@@ -60,10 +63,10 @@ SOLUTION_CONFIG = AttrDict({
 
     'groupby_aggregation': {'groupby_aggregations': [
         {'groupby': ['app'], 'select': 'channel', 'agg': 'count'},
-        {'groupby': ['ip','app','channel'], 'select': 'os', 'agg': 'mean'},
+        {'groupby': ['ip', 'app', 'channel'], 'select': 'os', 'agg': 'mean'},
         {'groupby': ['app'], 'select': 'channel', 'agg': 'nunique'},
         {'groupby': ['ip', 'device', 'os'], 'select': 'app', 'agg': 'nunique'},
-        {'groupby': ['ip','os','channel'], 'select': 'device', 'agg': 'var'}
+        {'groupby': ['ip', 'os', 'channel'], 'select': 'device', 'agg': 'var'}
     ]},
 
     'blacklist': {'blacklist': {'ip': [299172, 144604, 135992, 49386, 151908],
