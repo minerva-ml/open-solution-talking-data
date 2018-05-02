@@ -65,8 +65,7 @@ SOLUTION_CONFIG = AttrDict({
                            'min_frequencies': [20, 10, 10, 10, 10],
                            'impute_value': -1
                            },
-    'target_encoder': {'min_samples_leaf': safe_eval(params.target_encoder__min_samples_leaf),
-                       'smoothing': safe_eval(params.target_encoder__smoothing)
+    'target_encoder': {'n_splits': safe_eval(params.target_encoder__n_splits),
                        },
     'light_gbm': {'boosting_type': safe_eval(params.lgbm__boosting_type),
                   'objective': safe_eval(params.lgbm__objective),
