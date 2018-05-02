@@ -38,7 +38,7 @@ class FeatureJoiner(BaseTransformer):
             feature.reset_index(drop=True, inplace=True)
 
         outputs = {}
-        outputs['features'] = pd.concat(features, axis=1)
+        outputs['features'] = pd.concat(features, axis=1).astype(np.float32)
         outputs['feature_names'] = self._get_feature_names(features)
         outputs['categorical_features'] = self._get_feature_names(categorical_feature_list)
         return outputs
@@ -67,8 +67,9 @@ class CategoricalFilter(BaseTransformer):
         for column, levels_to_remove in self.category_levels_to_remove.items():
             if levels_to_remove:
                 categorical_features[column].replace(levels_to_remove, self.impute_value, inplace=True)
-            categorical_features['{}_infrequent'.format(column)] = (
-                categorical_features[column] == self.impute_value).astype(int)
+            categorical_features['{}_infrequent'.format(column)] = categorical_features[column] == self.impute_value
+            categorical_features['{}_infrequent'.format(column)] = categorical_features[
+                '{}_infrequent'.format(column)].astype(int)
         return {'categorical_features': categorical_features}
 
     def load(self, filepath):
@@ -141,7 +142,7 @@ class TargetEncoderNSplits(BaseTransformer):
 
                 X_test = X_test.merge(train_target_means, on=column, how='left')
             X_target_means.append(X_test)
-        X_target_means = pd.concat(X_target_means, axis=0)
+        X_target_means = pd.concat(X_target_means, axis=0).astype(np.float32)
 
         for column, target_mean_name in zip(feature_columns, self._target_means_names(feature_columns)):
             group_object = X_target_means.groupby(column)
@@ -157,7 +158,7 @@ class TargetEncoderNSplits(BaseTransformer):
                                                           self._is_null_names(columns)):
             categorical_features = categorical_features.merge(self.target_means_map[column],
                                                               on=column,
-                                                              how='left')
+                                                              how='left').astype(np.float32)
             categorical_features[is_null_name] = pd.isnull(categorical_features[target_mean_name]).astype(int)
             categorical_features[target_mean_name].fillna(0, inplace=True)
 
@@ -218,7 +219,7 @@ class TimeDelta(BaseTransformer):
                                                                self.time_delta_names,
                                                                self.is_null_names):
             X[time_delta_name] = X.groupby(groupby_spec)[self.timestamp_column].apply(self._time_delta).reset_index(
-                level=list(range(len(groupby_spec))), drop=True)
+                level=list(range(len(groupby_spec))), drop=True).astype(np.float32)
             X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
             X[time_delta_name].fillna(0, inplace=True)
         return {'numerical_features': X[self.time_delta_names],
@@ -270,7 +271,7 @@ class ConfidenceRate(BaseTransformer):
                                                                 self.is_null_names):
             categorical_features = categorical_features.merge(self.confidence_rates_map['_'.join(category)],
                                                               on=category,
-                                                              how='left')
+                                                              how='left').astype(np.float32)
             categorical_features[is_null_name] = pd.isnull(categorical_features[confidence_rate_name]).astype(int)
             categorical_features[confidence_rate_name].fillna(0, inplace=True)
 
