@@ -206,7 +206,7 @@ def _predict(pipeline_name, dev_mode):
 
     logger.info('subsetting submission')
     meta_test = pd.read_csv(params.test_filepath, usecols=cfg.ID_COLUMN, dtype=cfg.COLUMN_TYPES['inference'])
-    submission = pd.merge(meta_test, full_submission, on=[cfg.ID_COLUMN], how='left')
+    submission = pd.merge(meta_test, full_submission, on=cfg.ID_COLUMN, how='left')
 
     submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None, encoding='utf-8')
