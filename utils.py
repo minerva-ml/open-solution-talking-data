@@ -137,11 +137,10 @@ def safe_eval(obj):
         return obj
 
 
-def get_submission_times_index(meta, timestamp_column, submission_days_hours):
+def get_submission_hours_index(meta, timestamp_column, submission_hours):
     times = pd.DatetimeIndex(meta[timestamp_column])
     filtered_indeces = []
-    for day, hours in submission_days_hours.items():
-        for hour in hours:
-            chunk = np.where((times.hour == hour) & (times.day == day))
-            filtered_indeces.extend(chunk[0])
+    for hour in submission_hours:
+        chunk = np.where(times.hour == hour)
+        filtered_indeces.extend(chunk[0])
     return filtered_indeces

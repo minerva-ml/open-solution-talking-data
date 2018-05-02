@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 import pipeline_config as cfg
 from pipelines import PIPELINES
 from utils import init_logger, read_params, create_submission, set_seed, save_evaluation_predictions, \
-    read_csv_time_chunks, cut_data_in_time_chunks, data_hash_channel_send, get_submission_times_index
+    read_csv_time_chunks, cut_data_in_time_chunks, data_hash_channel_send, get_submission_hours_index
 
 set_seed(1234)
 logger = init_logger()
@@ -148,11 +148,11 @@ def _evaluate(pipeline_name, dev_mode):
     ctx.channel_send('ROC_AUC FULL', 0, score)
 
     logger.info('Subsetting on submission times')
-    index_for_submission_times = get_submission_times_index(meta_valid_split,
+    index_for_submission_hours = get_submission_hours_index(meta_valid_split,
                                                             cfg.TIMESTAMP_COLUMN,
-                                                            eval(params.submission_days_hours))
-    y_pred_ = y_pred[index_for_submission_times]
-    y_true_ = y_true[index_for_submission_times]
+                                                            eval(params.submission_hours))
+    y_pred_ = y_pred[index_for_submission_hours]
+    y_true_ = y_true[index_for_submission_hours]
 
     logger.info('Calculating ROC_AUC Submission Scores')
     score = roc_auc_score(y_true_, y_pred_)
