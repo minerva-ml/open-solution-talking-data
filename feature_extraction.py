@@ -233,6 +233,30 @@ class TimeDelta(BaseTransformer):
             return groupby_object
 
 
+class GroupbyAggregations(BaseTransformer):
+
+    def __init__(self, groupby_aggregations):
+        self.groupby_aggregations = groupby_aggregations
+
+    @property
+    def groupby_aggregations_names(self):
+        groupby_aggregations_names = ['{}_{}_{}'.format('_'.join(spec['groupby']), spec['agg'], spec['select'])
+                                      for spec in self.groupby_aggregations]
+        return groupby_aggregations_names
+
+    def transform(self, categorical_features):
+        for spec, groupby_aggregations_name in zip(self.groupby_aggregations, self.groupby_aggregations_names):
+            group_object = categorical_features.groupby(spec['groupby'])
+
+            categorical_features = categorical_features.merge(
+                group_object[spec['select']].agg(spec['agg']).reset_index().rename(index=str, columns={
+                    spec['select']: groupby_aggregations_name})[spec['groupby'] + [groupby_aggregations_name]],
+                on=spec['groupby'], how='left'
+                )
+
+        return {'numerical_features': categorical_features[self.groupby_aggregations_names]}
+
+
 class ConfidenceRate(BaseTransformer):
     def __init__(self, confidence_level=100, categories=[]):
         self.confidence_level = confidence_level
