@@ -58,6 +58,14 @@ SOLUTION_CONFIG = AttrDict({
                    'timestamp_column': 'click_time'
                    },
 
+    'groupby_aggregation': {'groupby_aggregations': [
+        {'groupby': ['app'], 'select': 'channel', 'agg': 'count'},
+        {'groupby': ['ip','app','channel'], 'select': 'os', 'agg': 'mean'},
+        {'groupby': ['app'], 'select': 'channel', 'agg': 'nunique'},
+        {'groupby': ['ip', 'device', 'os'], 'select': 'app', 'agg': 'nunique'},
+        {'groupby': ['ip','os','channel'], 'select': 'device', 'agg': 'var'}
+    ]},
+
     'confidence_rate': {'categories': [['app', 'os'], ['os', 'ip']],
                         'confidence_level': 100},
 
