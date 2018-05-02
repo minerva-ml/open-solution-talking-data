@@ -141,6 +141,8 @@ def feature_extraction_v2(config, train_mode, **kwargs):
                                                     config, train_mode, **kwargs)
         groupby_aggregation, groupby_aggregation_valid = _groupby_aggregations((feature_by_type_split, feature_by_type_split_valid),
                                                                                config, train_mode, **kwargs)
+        blacklist, blacklist_valid = _blacklists((feature_by_type_split, feature_by_type_split_valid),
+                                                 config, train_mode, **kwargs)
         confidence_rate, confidence_rate_valid = _confidence_rates((feature_by_type_split, feature_by_type_split_valid),
                                                                    config, train_mode, **kwargs)
 
@@ -156,9 +158,11 @@ def feature_extraction_v2(config, train_mode, **kwargs):
                                                                                             confidence_rate_valid,
                                                                                             target_encoder_valid],
                                                                   categorical_features=[time_delta,
+                                                                                        blacklist,
                                                                                         confidence_rate,
                                                                                         target_encoder],
                                                                   categorical_features_valid=[time_delta_valid,
+                                                                                              blacklist_valid,
                                                                                               confidence_rate_valid,
                                                                                               target_encoder_valid],
                                                                   config=config, train_mode=train_mode)
@@ -167,13 +171,14 @@ def feature_extraction_v2(config, train_mode, **kwargs):
         feature_by_type_split = _feature_by_type_splits(config, train_mode)
         time_delta = _time_deltas(feature_by_type_split, config, train_mode, **kwargs)
         groupby_aggregation = _groupby_aggregations(feature_by_type_split, config, train_mode, **kwargs)
+        blacklist = _blacklists(feature_by_type_split, config, train_mode, **kwargs)
         confidence_rate = _confidence_rates(feature_by_type_split, config, train_mode, **kwargs)
         target_encoder = _target_encoders(feature_by_type_split, config, train_mode, **kwargs)
 
         feature_combiner = _join_features(numerical_features=[time_delta, groupby_aggregation,
                                                               confidence_rate, target_encoder],
                                           numerical_features_valid=[],
-                                          categorical_features=[time_delta, confidence_rate, target_encoder],
+                                          categorical_features=[time_delta, blacklist, confidence_rate, target_encoder],
                                           categorical_features_valid=[],
                                           config=config, train_mode=train_mode)
         return feature_combiner
@@ -445,6 +450,46 @@ def _groupby_aggregations(dispatchers, config, train_mode, **kwargs):
                                     **kwargs)
 
         return groupby_aggregations
+
+
+def _blacklists(dispatchers, config, train_mode, **kwargs):
+    if train_mode:
+        feature_by_type_split, feature_by_type_split_valid = dispatchers
+        blacklists = Step(name='blacklists',
+                          transformer=fe.Blacklist(**config.blacklist),
+                          input_data=['input'],
+                          input_steps=[feature_by_type_split],
+                          adapter={
+                              'categorical_features': ([(feature_by_type_split.name, 'categorical_features')])
+                          },
+                          cache_dirpath=config.env.cache_dirpath,
+                          **kwargs)
+
+        blacklists_valid = Step(name='blacklists_valid',
+                                transformer=blacklists,
+                                input_data=['input'],
+                                input_steps=[feature_by_type_split_valid],
+                                adapter={'categorical_features': (
+                                    [(feature_by_type_split_valid.name, 'categorical_features')])
+                                },
+                                cache_dirpath=config.env.cache_dirpath,
+                                **kwargs)
+
+        return blacklists, blacklists_valid
+
+    else:
+        feature_by_type_split = dispatchers
+        blacklists = Step(name='blacklists',
+                          transformer=fe.Blacklist(**config.blacklist),
+                          input_data=['input'],
+                          input_steps=[feature_by_type_split],
+                          adapter={
+                              'categorical_features': ([(feature_by_type_split.name, 'categorical_features')])
+                          },
+                          cache_dirpath=config.env.cache_dirpath,
+                          **kwargs)
+
+        return blacklists
 
 
 def _confidence_rates(dispatchers, config, train_mode, **kwargs):
