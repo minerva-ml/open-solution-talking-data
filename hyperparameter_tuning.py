@@ -1,3 +1,5 @@
+import gc
+
 import numpy as np
 from deepsense import neptune
 from sklearn.externals import joblib
@@ -39,6 +41,9 @@ class RandomSearchOptimizer(BaseTransformer):
             y_pred_valid_value = list(y_pred_valid.values())[0]
             run_score = self.score_func(y_valid, y_pred_valid_value)
             results.append((run_score, param_set))
+
+            del y_pred_valid, transformer
+            gc.collect()
 
             for callback in self.callbacks:
                 callback.on_run_end(score=run_score, params=param_set)
