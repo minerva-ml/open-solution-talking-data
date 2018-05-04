@@ -85,8 +85,8 @@ def create_param_space(params, n_runs):
                 if len(value) == 2:
                     mode = 'choice'
                 else:
-                    mode = value[2]
-                param_choice[param] = sample_param_space(value[:2], mode)
+                    mode = value[-1]
+                param_choice[param] = sample_param_space(value[:-1], mode)
             else:
                 param_choice[param] = value
         param_space.append(param_choice)
@@ -94,15 +94,18 @@ def create_param_space(params, n_runs):
 
 
 def sample_param_space(value_range, mode):
-    range_min, range_max = value_range
-    if mode == 'choice':
-        value = np.random.choice(range(range_min, range_max, 1))
-    elif mode == 'uniform':
-        value = np.random.uniform(low=range_min, high=range_max)
-    elif mode == 'log-uniform':
-        value = np.exp(np.random.uniform(low=np.log(range_min), high=np.log(range_max)))
+    if mode == 'list':
+        value = np.random.choice(value_range, 1)
     else:
-        raise NotImplementedError
+        range_min, range_max = value_range
+        if mode == 'choice':
+            value = np.random.choice(range(range_min, range_max, 1))
+        elif mode == 'uniform':
+            value = np.random.uniform(low=range_min, high=range_max)
+        elif mode == 'log-uniform':
+            value = np.exp(np.random.uniform(low=np.log(range_min), high=np.log(range_max)))
+        else:
+            raise NotImplementedError
     return value
 
 

@@ -50,7 +50,23 @@ SOLUTION_CONFIG = AttrDict({
                                                                                             'random_search_light_gbm.pkl')
                                                                    }
                                                   }
-                                    }
+                                    },
+                      'xgboost': {'n_runs': safe_eval(params.xgboost_random_search_runs),
+                                  'callbacks': {'neptune_monitor': {'name': 'xgboost'
+                                                                    },
+                                                'save_results': {'filepath': os.path.join(params.experiment_dir,
+                                                                                          'random_search_xgboost.pkl')
+                                                                 }
+                                                }
+                                  },
+                      'random_forest': {'n_runs': safe_eval(params.random_forest_random_search_runs),
+                                        'callbacks': {'neptune_monitor': {'name': 'random_forest'
+                                                                          },
+                                                      'save_results': {'filepath': os.path.join(params.experiment_dir,
+                                                                                                'random_search_random_forest.pkl')
+                                                                       }
+                                                      }
+                                        }
                       },
     'dataframe_by_type_splitter': {'numerical_columns': [],
                                    'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
@@ -107,4 +123,31 @@ SOLUTION_CONFIG = AttrDict({
                   'early_stopping_rounds': safe_eval(params.lgbm__early_stopping_rounds),
                   'verbose': safe_eval(params.verbose)
                   },
+
+    'xgboost': {'booster': safe_eval(params.xgboost__booster),
+                'objective': safe_eval(params.xgboost__objective),
+                'eval_metric': safe_eval(params.xgboost__eval_metric),
+                'learning_rate': safe_eval(params.xgboost__learning_rate),
+                'max_depth': safe_eval(params.xgboost__max_depth),
+                'gamma': safe_eval(params.xgboost__gamma),
+                'subsample': safe_eval(params.xgboost__subsample),
+                'reg_lambda': safe_eval(params.xgboost__reg_lambda),
+                'reg_alpha': safe_eval(params.xgboost__reg_alpha),
+                'scale_pos_weight': safe_eval(params.xgboost__scale_pos_weight),
+                'number_boosting_rounds': safe_eval(params.xgboost__number_boosting_rounds),
+                'early_stopping_rounds': safe_eval(params.xgboost__early_stopping_rounds),
+                'maximize': safe_eval(params.xgboost__maximize),
+                'nthread': safe_eval(params.num_workers),
+                'verbose': safe_eval(params.verbose)
+                },
+
+    'random_forest': {'n_estimators': safe_eval(params.random_forest__n_estimators),
+                      'max_depth': safe_eval(params.random_forest__max_depth),
+                      'min_samples_split': safe_eval(params.random_forest__min_samples_split),
+                      'min_samples_leaf': safe_eval(params.random_forest__min_samples_leaf),
+                      'max_features': safe_eval(params.random_forest__max_features),
+                      'class_weight': safe_eval(params.random_forest__class_weight),
+                      'n_jobs': safe_eval(params.num_workers),
+                      'verbose': safe_eval(params.verbose)
+                      },
 })

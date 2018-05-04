@@ -27,7 +27,7 @@ parameters:
   test_chunks_dir: /public/talking_data/files/test_chunks
   test_filepath: /public/talking_data/data/test.csv
   test_suplement_filepath: /public/talking_data/data/test_supplement.csv
-  experiment_dir: /ouptut/solution_week_2_dev
+  experiment_dir: /ouptut/solution_week_2
   train_days_hours: '{7: [17,18,19,20,21,22,23], 8: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
   valid_days_hours: '{8: [17,18,19,20,21,22,23], 9: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
   test_days_hours: '{9: [17,18,19,20,21,22,23], 10: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
@@ -36,7 +36,7 @@ parameters:
 # Execution
   overwrite: 1
   num_workers: 10
-  verbose: 1
+  verbose: 2
 
 # Preprocessing
   target_encoder__n_splits: 10
@@ -60,3 +60,30 @@ parameters:
   lgbm__reg_lambda: 0.0
   lgbm__reg_alpha: 0.0
   lgbm__scale_pos_weight: 10
+
+# XGBoost
+  xgboost_random_search_runs: 0
+  xgboost__booster: gbtree
+  xgboost__objective: 'binary:logistic'
+  xgboost__eval_metric: 'auc'
+  xgboost__number_boosting_rounds: 100
+  xgboost__early_stopping_rounds: 10
+  xgboost__maximize: True
+  xgboost__learning_rate: 0.1
+  xgboost__max_depth: 3
+  xgboost__min_child_weight: 5
+  xgboost__gamma: 0.05
+  xgboost__subsample: 0.8
+  xgboost__colsample_bytree: 0.3
+  xgboost__reg_lambda:  0.01
+  xgboost__reg_alpha: 0.0
+  xgboost__scale_pos_weight: 200
+
+# Random Forest
+  random_forest_random_search_runs: 0
+  random_forest__n_estimators: 500
+  random_forest__max_depth: 5
+  random_forest__min_samples_split: 2
+  random_forest__min_samples_leaf: 10
+  random_forest__max_features: log2
+  random_forest__class_weight: '{0:1, 1:200}'
