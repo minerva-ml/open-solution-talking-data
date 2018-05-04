@@ -28,10 +28,10 @@ parameters:
   test_filepath: /public/talking_data/data/test.csv
   test_suplement_filepath: /public/talking_data/data/test_supplement.csv
   experiment_dir: /ouptut/solution_week_2_dev
-  train_days_hours: '{7: [17,18,19,20,21,22,23], 8: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
-  valid_days_hours: '{8: [17,18,19,20,21,22,23], 9: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
-  test_days_hours: '{9: [17,18,19,20,21,22,23], 10: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
-  submission_hours: '[4,5,6,9,10,11,13,14,15]'
+  train_days_hours: '{7: [17,18,19,20,21,22,23], 8: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
+  valid_days_hours: '{8: [17,18,19,20,21,22,23], 9: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
+  test_days_hours: '{9: [17,18,19,20,21,22,23], 10: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}'
+  submission_hours: '[4,5,9,10,13,14]'
 
 # Execution
   overwrite: 1
