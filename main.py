@@ -174,13 +174,17 @@ def _predict(pipeline_name, dev_mode):
     else:
         TEST_DAYS_HOURS = eval(params.test_days_hours)
 
-    meta_test_full = read_csv_time_chunks(params.test_chunks_dir,
-                                          prefix='test',
-                                          days_hours=TEST_DAYS_HOURS,
-                                          usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
-                                          dtype=cfg.COLUMN_TYPES['inference'],
-                                          logger=logger)
-
+    meta_test_suplement = read_csv_time_chunks(params.test_chunks_dir,
+                                               prefix='test',
+                                               days_hours=TEST_DAYS_HOURS,
+                                               usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                                               dtype=cfg.COLUMN_TYPES['inference'],
+                                               logger=logger)
+    meta_test = pd.read_csv(params.test_filepath,
+                            usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
+                            dtype=cfg.COLUMN_TYPES['inference'])
+    meta_test_full = pd.concat([meta_test_suplement, meta_test], axis=0)
+    meta_test_full.drop_duplicates(subset=cfg.ID_COLUMN, keep='last', inplace=True)
     meta_test_full['click_time'] = pd.to_datetime(meta_test_full['click_time'], format='%Y-%m-%d %H:%M:%S')
 
     data_hash_channel_send(ctx, 'Test Data Hash', meta_test_full)
@@ -206,7 +210,7 @@ def _predict(pipeline_name, dev_mode):
 
     logger.info('subsetting submission')
     meta_test = pd.read_csv(params.test_filepath, usecols=cfg.ID_COLUMN, dtype=cfg.COLUMN_TYPES['inference'])
-    submission = pd.merge(full_submission, meta_test, on=cfg.ID_COLUMN, how='right')
+    submission = pd.merge(full_submission, meta_test, on=cfg.ID_COLUMN, how='inner')
 
     submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None, encoding='utf-8')
