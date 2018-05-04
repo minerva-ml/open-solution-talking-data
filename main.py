@@ -183,7 +183,7 @@ def _predict(pipeline_name, dev_mode):
     meta_test = pd.read_csv(params.test_filepath,
                             usecols=cfg.FEATURE_COLUMNS + cfg.ID_COLUMN,
                             dtype=cfg.COLUMN_TYPES['inference'])
-    meta_test_full = pd.concat([meta_test_suplement, meta_test], axis=0)
+    meta_test_full = pd.concat([meta_test_suplement, meta_test], axis=0).reset_index(drop=True)
     meta_test_full.drop_duplicates(subset=cfg.ID_COLUMN, keep='last', inplace=True)
     meta_test_full['click_time'] = pd.to_datetime(meta_test_full['click_time'], format='%Y-%m-%d %H:%M:%S')
 
@@ -209,8 +209,7 @@ def _predict(pipeline_name, dev_mode):
     full_submission.to_csv(full_submission_filepath, index=None, encoding='utf-8')
 
     logger.info('subsetting submission')
-    meta_test = pd.read_csv(params.test_filepath, usecols=cfg.ID_COLUMN, dtype=cfg.COLUMN_TYPES['inference'])
-    submission = pd.merge(full_submission, meta_test, on=cfg.ID_COLUMN, how='inner')
+    submission = pd.merge(full_submission, meta_test[cfg.ID_COLUMN], on=cfg.ID_COLUMN, how='inner')
 
     submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None, encoding='utf-8')

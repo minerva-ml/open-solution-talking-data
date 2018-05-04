@@ -7,10 +7,7 @@ from steps.misc import LightGBM
 class LightGBMLowMemory(LightGBM):
     def fit(self, X, y, X_valid, y_valid, feature_names=None, categorical_features=None, **kwargs):
         X = X[feature_names].values.astype(np.float32)
-        y = y.astype(np.int8)
-
         X_valid = X_valid[feature_names].values.astype(np.float32)
-        y_valid = y_valid.astype(np.int8)
 
         train = lgb.Dataset(X, label=y)
         valid = lgb.Dataset(X_valid, label=y_valid)
