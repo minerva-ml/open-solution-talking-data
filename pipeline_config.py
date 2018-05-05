@@ -124,7 +124,8 @@ SOLUTION_CONFIG = AttrDict({
                   'verbose': safe_eval(params.verbose)
                   },
 
-    'xgboost': {'booster': safe_eval(params.xgboost__booster),
+    'xgboost': {'temp_dir': os.path.join(params.experiment_dir, 'tmp'),
+                'booster': safe_eval(params.xgboost__booster),
                 'objective': safe_eval(params.xgboost__objective),
                 'eval_metric': safe_eval(params.xgboost__eval_metric),
                 'learning_rate': safe_eval(params.xgboost__learning_rate),

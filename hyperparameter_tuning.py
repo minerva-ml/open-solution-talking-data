@@ -84,9 +84,10 @@ def create_param_space(params, n_runs):
             if isinstance(value, list):
                 if len(value) == 2:
                     mode = 'choice'
+                    param_choice[param] = sample_param_space(value, mode)
                 else:
                     mode = value[-1]
-                param_choice[param] = sample_param_space(value[:-1], mode)
+                    param_choice[param] = sample_param_space(value[:-1], mode)
             else:
                 param_choice[param] = value
         param_space.append(param_choice)
@@ -95,7 +96,7 @@ def create_param_space(params, n_runs):
 
 def sample_param_space(value_range, mode):
     if mode == 'list':
-        value = np.random.choice(value_range, 1)
+        value = np.random.choice(value_range)
     else:
         range_min, range_max = value_range
         if mode == 'choice':

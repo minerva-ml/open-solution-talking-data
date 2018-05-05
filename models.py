@@ -1,9 +1,13 @@
+import gc
+import os
+
 from attrdict import AttrDict
 import numpy as np
 import lightgbm as lgb
 import xgboost as xgb
 from sklearn.externals import joblib
 from sklearn import ensemble
+from sklearn.datasets import dump_svmlight_file
 
 from steps.base import BaseTransformer
 from steps.misc import LightGBM
@@ -19,7 +23,8 @@ class LightGBMLowMemory(LightGBM):
 
         evaluation_results = {}
         self.estimator = lgb.train(self.model_config,
-                                   train, valid_sets=[train, valid], valid_names=['train', 'valid'],
+#                                    train, valid_sets=[train, valid], valid_names=['train', 'valid'],
+                                   train, valid_sets=[valid], valid_names=['valid'],
                                    evals_result=evaluation_results,
                                    num_boost_round=self.training_config.number_boosting_rounds,
                                    early_stopping_rounds=self.training_config.early_stopping_rounds,
@@ -31,7 +36,7 @@ class LightGBMLowMemory(LightGBM):
 class XGBoost(BaseTransformer):
     def __init__(self, **params):
         self.params = params
-        self.training_params = ['number_boosting_rounds', 'early_stopping_rounds', 'maximize']
+        self.training_params = ['number_boosting_rounds', 'early_stopping_rounds', 'maximize', 'temp_dir']
         self.evaluation_results = {}
         self.evaluation_function = None
 
@@ -49,8 +54,8 @@ class XGBoost(BaseTransformer):
         X = X.values.astype(np.float32)
         X_valid = X_valid.values.astype(np.float32)
 
-        train = xgb.DMatrix(data=X, label=y)
-        valid = xgb.DMatrix(data=X_valid, label=y_valid)
+        train = self._get_DMatrix(X, y, 'train')
+        valid = self._get_DMatrix(X_valid, y_valid, 'valid')
 
         self.estimator = xgb.train(self.model_config,
                                    train,
@@ -63,7 +68,7 @@ class XGBoost(BaseTransformer):
                                    feval=self.evaluation_function)
         return self
 
-    def transform(self, X, y=None, **kwargs):
+    def transform(self, X, **kwargs):
         X = X.values.astype(np.float32)
         data = xgb.DMatrix(data=X)
         prediction = self.estimator.predict(data)
@@ -79,6 +84,14 @@ class XGBoost(BaseTransformer):
         joblib.dump({'estimator': self.estimator,
                      'eval_results': self.evaluation_results}, filepath)
 
+    def _get_DMatrix(self, X, y, suffix):
+        temp_filepath = os.path.join(self.training_config['temp_dir'], '{}.libsvm'.format(suffix))
+        dump_svmlight_file(X, y, temp_filepath)
+
+        del X, y
+        gc.collect()
+        return xgb.DMatrix(temp_filepath)
+
 
 class RandomForestClassifier(BaseTransformer):
     def __init__(self, **params):
@@ -86,11 +99,10 @@ class RandomForestClassifier(BaseTransformer):
 
     def fit(self, X, y, **kwargs):
         X = X.values.astype(np.float32)
-
         self.estimator.fit(X, y)
         return self
 
-    def transform(self, X, y=None, **kwargs):
+    def transform(self, X, **kwargs):
         X = X.values.astype(np.float32)
         prediction = self.estimator.predict_proba(X)[:, 1]
         return {'prediction': prediction}
