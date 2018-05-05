@@ -138,7 +138,7 @@ SOLUTION_CONFIG = AttrDict({
                 'number_boosting_rounds': safe_eval(params.xgboost__number_boosting_rounds),
                 'early_stopping_rounds': safe_eval(params.xgboost__early_stopping_rounds),
                 'maximize': safe_eval(params.xgboost__maximize),
-                'nthread': safe_eval(params.num_workers),
+                'n_jobs': safe_eval(params.num_workers),
                 'verbose': safe_eval(params.verbose)
                 },
 
