@@ -6,7 +6,7 @@ import feature_extraction as fe
 from hyperparameter_tuning import RandomSearchOptimizer, NeptuneMonitor, SaveResults
 from steps.adapters import to_numpy_label_inputs, identity_inputs
 from steps.base import Step, Dummy
-from models import LightGBMLowMemory as LightGBM
+from models import LightGBMLowMemory as LightGBM, XGBoost, RandomForestClassifier
 
 
 def baseline(config, train_mode):
@@ -26,7 +26,7 @@ def baseline(config, train_mode):
     return output
 
 
-def solution_1(config, train_mode):
+def features_v1_lgbm(config, train_mode):
     if train_mode:
         features, features_valid = feature_extraction_v1(config, train_mode,
                                                          save_output=True, cache_output=True, load_saved_output=False)
@@ -44,7 +44,7 @@ def solution_1(config, train_mode):
     return output
 
 
-def solution_2(config, train_mode):
+def features_v2_lgbm(config, train_mode):
     if train_mode:
         features, features_valid = feature_extraction_v2(config, train_mode,
                                                          save_output=True, cache_output=True, load_saved_output=True)
@@ -57,6 +57,42 @@ def solution_2(config, train_mode):
                   transformer=Dummy(),
                   input_steps=[light_gbm],
                   adapter={'y_pred': ([(light_gbm.name, 'prediction')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
+def features_v2_xgboost(config, train_mode):
+    if train_mode:
+        features, features_valid = feature_extraction_v2(config, train_mode,
+                                                         save_output=True, cache_output=True, load_saved_output=True)
+        xgboost = classifier_xgboost((features, features_valid), config, train_mode)
+    else:
+        features = feature_extraction_v2(config, train_mode, cache_output=True)
+        xgboost = classifier_xgboost(features, config, train_mode)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[xgboost],
+                  adapter={'y_pred': ([(xgboost.name, 'prediction')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
+def features_v2_random_forest(config, train_mode):
+    if train_mode:
+        features, features_valid = feature_extraction_v2(config, train_mode,
+                                                         save_output=True, cache_output=True, load_saved_output=True)
+        xgboost = classifier_random_forest((features, features_valid), config, train_mode)
+    else:
+        features = feature_extraction_v2(config, train_mode, cache_output=True)
+        xgboost = classifier_random_forest(features, config, train_mode)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[xgboost],
+                  adapter={'y_pred': ([(xgboost.name, 'prediction')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -139,8 +175,9 @@ def feature_extraction_v2(config, train_mode, **kwargs):
         feature_by_type_split, feature_by_type_split_valid = _feature_by_type_splits(config, train_mode)
         time_delta, time_delta_valid = _time_deltas((feature_by_type_split, feature_by_type_split_valid),
                                                     config, train_mode, **kwargs)
-        groupby_aggregation, groupby_aggregation_valid = _groupby_aggregations((feature_by_type_split, feature_by_type_split_valid),
-                                                                               config, train_mode, **kwargs)
+        groupby_aggregation, groupby_aggregation_valid = _groupby_aggregations(
+            (feature_by_type_split, feature_by_type_split_valid),
+            config, train_mode, **kwargs)
         blacklist, blacklist_valid = _blacklists((feature_by_type_split, feature_by_type_split_valid),
                                                  config, train_mode, **kwargs)
         confidence_rate, confidence_rate_valid = _confidence_rates((feature_by_type_split, feature_by_type_split_valid),
@@ -225,6 +262,86 @@ def classifier_lgbm(features, config, train_mode, **kwargs):
                          cache_dirpath=config.env.cache_dirpath,
                          **kwargs)
     return light_gbm
+
+
+def classifier_xgboost(features, config, train_mode, **kwargs):
+    if train_mode:
+        features_train, features_valid = features
+        if config.random_search.xgboost.n_runs:
+            transformer = RandomSearchOptimizer(XGBoost, config.xgboost,
+                                                train_input_keys=[],
+                                                valid_input_keys=['X_valid', 'y_valid'],
+                                                score_func=roc_auc_score,
+                                                maximize=True,
+                                                n_runs=config.random_search.xgboost.n_runs,
+                                                callbacks=[NeptuneMonitor(
+                                                    **config.random_search.xgboost.callbacks.neptune_monitor),
+                                                    SaveResults(
+                                                        **config.random_search.xgboost.callbacks.save_results),
+                                                ]
+                                                )
+        else:
+            transformer = XGBoost(**config.xgboost)
+
+        xgboost = Step(name='xgboost',
+                       transformer=transformer,
+                       input_data=['input'],
+                       input_steps=[features_train, features_valid],
+                       adapter={'X': ([(features_train.name, 'features')]),
+                                'y': ([('input', 'y')], to_numpy_label_inputs),
+                                'feature_names': ([(features_train.name, 'feature_names')]),
+                                'categorical_features': ([(features_train.name, 'categorical_features')]),
+                                'X_valid': ([(features_valid.name, 'features')]),
+                                'y_valid': ([('input', 'y_valid')], to_numpy_label_inputs),
+                                },
+                       cache_dirpath=config.env.cache_dirpath, **kwargs)
+    else:
+        xgboost = Step(name='xgboost',
+                       transformer=XGBoost(**config.xgboost),
+                       input_steps=[features],
+                       adapter={'X': ([(features.name, 'features')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath, **kwargs)
+    return xgboost
+
+
+def classifier_random_forest(features, config, train_mode, **kwargs):
+    if train_mode:
+        features_train, features_valid = features
+        if config.random_search.random_forest.n_runs:
+            transformer = RandomSearchOptimizer(RandomForestClassifier, config.random_forest,
+                                                train_input_keys=[],
+                                                valid_input_keys=['X_valid', 'y_valid'],
+                                                score_func=roc_auc_score,
+                                                maximize=True,
+                                                n_runs=config.random_search.random_forest.n_runs,
+                                                callbacks=[NeptuneMonitor(
+                                                    **config.random_search.random_forest.callbacks.neptune_monitor),
+                                                    SaveResults(
+                                                        **config.random_search.random_forest.callbacks.save_results),
+                                                ]
+                                                )
+        else:
+            transformer = RandomForestClassifier(**config.random_forest)
+
+        random_forest = Step(name='random_forest',
+                             transformer=transformer,
+                             input_data=['input'],
+                             input_steps=[features_train, features_valid],
+                             adapter={'X': ([(features_train.name, 'features')]),
+                                      'y': ([('input', 'y')], to_numpy_label_inputs),
+                                      'X_valid': ([(features_valid.name, 'features')]),
+                                      'y_valid': ([('input', 'y_valid')], to_numpy_label_inputs),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath, **kwargs)
+    else:
+        random_forest = Step(name='random_forest',
+                             transformer=RandomForestClassifier(**config.random_forest),
+                             input_steps=[features],
+                             adapter={'X': ([(features.name, 'features')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath, **kwargs)
+    return random_forest
 
 
 def _feature_by_type_splits(config, train_mode):
@@ -586,8 +703,12 @@ def _join_features(numerical_features, numerical_features_valid,
 
 PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),
                           'inference': partial(baseline, train_mode=False)},
-             'solution_1': {'train': partial(solution_1, train_mode=True),
-                            'inference': partial(solution_1, train_mode=False)},
-             'solution_2': {'train': partial(solution_2, train_mode=True),
-                            'inference': partial(solution_2, train_mode=False)},
+             'features_v1_lgbm': {'train': partial(features_v1_lgbm, train_mode=True),
+                                 'inference': partial(features_v1_lgbm, train_mode=False)},
+             'features_v2_lgbm': {'train': partial(features_v2_lgbm, train_mode=True),
+                                 'inference': partial(features_v2_lgbm, train_mode=False)},
+             'features_v2_xgboost': {'train': partial(features_v2_xgboost, train_mode=True),
+                                    'inference': partial(features_v2_xgboost, train_mode=False)},
+             'features_v2_random_forest': {'train': partial(features_v2_random_forest, train_mode=True),
+                                          'inference': partial(features_v2_random_forest, train_mode=False)},
              }
