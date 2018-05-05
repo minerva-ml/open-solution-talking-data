@@ -23,7 +23,6 @@ class LightGBMLowMemory(LightGBM):
 
         evaluation_results = {}
         self.estimator = lgb.train(self.model_config,
-#                                    train, valid_sets=[train, valid], valid_names=['train', 'valid'],
                                    train, valid_sets=[valid], valid_names=['valid'],
                                    evals_result=evaluation_results,
                                    num_boost_round=self.training_config.number_boosting_rounds,
