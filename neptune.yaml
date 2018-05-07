@@ -79,11 +79,8 @@ parameters:
   xgboost__reg_alpha: 0.0
   xgboost__scale_pos_weight: 200
 
-# Random Forest
-  random_forest_random_search_runs: 0
-  random_forest__n_estimators: 500
-  random_forest__max_depth: 5
-  random_forest__min_samples_split: 2
-  random_forest__min_samples_leaf: 10
-  random_forest__max_features: log2
-  random_forest__class_weight: '{0:1, 1:200}'
+# Logistic Regression
+  log_reg_random_search_runs: 0
+  log_reg__penalty: "l2"
+  log_reg__C: 16
+  log_reg__class_weight: '{0:1, 1:150}'

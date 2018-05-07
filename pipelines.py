@@ -6,7 +6,8 @@ import feature_extraction as fe
 from hyperparameter_tuning import RandomSearchOptimizer, NeptuneMonitor, SaveResults
 from steps.adapters import to_numpy_label_inputs, identity_inputs
 from steps.base import Step, Dummy
-from models import LightGBMLowMemory as LightGBM, XGBoost, RandomForestClassifier
+from steps.preprocessing import Normalizer
+from models import LightGBMLowMemory as LightGBM, XGBoost, LogisticRegression
 
 
 def baseline(config, train_mode):
@@ -80,19 +81,25 @@ def features_v2_xgboost(config, train_mode):
     return output
 
 
-def features_v2_random_forest(config, train_mode):
+def features_v2_log_reg(config, train_mode):
     if train_mode:
         features, features_valid = feature_extraction_v2(config, train_mode,
                                                          save_output=True, cache_output=True, load_saved_output=True)
-        xgboost = classifier_random_forest((features, features_valid), config, train_mode)
+
+        features_normalized, features_normalized_valid = _normalize((features, features_valid), config, train_mode,
+                                                                    save_output=True, cache_output=True,
+                                                                    load_saved_output=True)
+
+        log_reg = classifier_log_reg((features_normalized, features_normalized_valid), config, train_mode)
     else:
         features = feature_extraction_v2(config, train_mode, cache_output=True)
-        xgboost = classifier_random_forest(features, config, train_mode)
+        features_normalized = _normalize(features, config, train_mode, cache_output=True)
+        log_reg = classifier_log_reg(features_normalized, config, train_mode)
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[xgboost],
-                  adapter={'y_pred': ([(xgboost.name, 'prediction')]),
+                  input_steps=[log_reg],
+                  adapter={'y_pred': ([(log_reg.name, 'prediction')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -305,43 +312,79 @@ def classifier_xgboost(features, config, train_mode, **kwargs):
     return xgboost
 
 
-def classifier_random_forest(features, config, train_mode, **kwargs):
+def classifier_log_reg(features, config, train_mode, **kwargs):
     if train_mode:
         features_train, features_valid = features
-        if config.random_search.random_forest.n_runs:
-            transformer = RandomSearchOptimizer(RandomForestClassifier, config.random_forest,
-                                                train_input_keys=[],
-                                                valid_input_keys=['X_valid', 'y_valid'],
-                                                score_func=roc_auc_score,
-                                                maximize=True,
-                                                n_runs=config.random_search.random_forest.n_runs,
-                                                callbacks=[NeptuneMonitor(
-                                                    **config.random_search.random_forest.callbacks.neptune_monitor),
-                                                    SaveResults(
-                                                        **config.random_search.random_forest.callbacks.save_results),
-                                                ]
-                                                )
-        else:
-            transformer = RandomForestClassifier(**config.random_forest)
 
-        random_forest = Step(name='random_forest',
-                             transformer=transformer,
-                             input_data=['input'],
-                             input_steps=[features_train, features_valid],
-                             adapter={'X': ([(features_train.name, 'features')]),
-                                      'y': ([('input', 'y')], to_numpy_label_inputs),
-                                      'X_valid': ([(features_valid.name, 'features')]),
-                                      'y_valid': ([('input', 'y_valid')], to_numpy_label_inputs),
-                                      },
-                             cache_dirpath=config.env.cache_dirpath, **kwargs)
+        if config.random_search.log_reg.n_runs:
+            transformer = RandomSearchOptimizer(LogisticRegression, config.log_reg,
+                                            train_input_keys=[],
+                                            valid_input_keys=['X_valid', 'y_valid'],
+                                            score_func=roc_auc_score,
+                                            maximize=True,
+                                            n_runs=config.random_search.log_reg.n_runs,
+                                            callbacks=[NeptuneMonitor(
+                                                **config.random_search.log_reg.callbacks.neptune_monitor),
+                                                SaveResults(
+                                                    **config.random_search.log_reg.callbacks.save_results),
+                                            ]
+                                            )
+        else:
+            transformer = LogisticRegression(**config.log_reg)
+
+        log_reg = Step(name='log_reg',
+                       transformer=transformer,
+                       input_data=['input'],
+                       input_steps=[features_train, features_valid],
+                       adapter={'X': ([(features_train.name, 'X')]),
+                                'y': ([('input', 'y')], to_numpy_label_inputs),
+                                'X_valid': ([(features_valid.name, 'X')]),
+                                'y_valid': ([('input', 'y_valid')], to_numpy_label_inputs),
+                                },
+                       cache_dirpath=config.env.cache_dirpath, **kwargs)
     else:
-        random_forest = Step(name='random_forest',
-                             transformer=RandomForestClassifier(**config.random_forest),
-                             input_steps=[features],
-                             adapter={'X': ([(features.name, 'features')]),
-                                      },
-                             cache_dirpath=config.env.cache_dirpath, **kwargs)
-    return random_forest
+
+        log_reg = Step(name='log_reg',
+                       transformer=LogisticRegression(**config.log_reg),
+                       input_steps=[features],
+                       adapter={'X': ([(features.name, 'features')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath, **kwargs)
+    return log_reg
+
+
+def _normalize(features, config, train_mode, **kwargs):
+    if train_mode:
+        feature_train, features_valid = features
+        normalizer = Step(name='normalizer',
+                          transformer=Normalizer(),
+                          input_steps=[feature_train],
+                          adapter={
+                              'X': ([(feature_train.name, 'features')]),
+                          },
+                          cache_dirpath=config.env.cache_dirpath, **kwargs)
+
+        normalizer_valid = Step(name='normalizer_valid',
+                                transformer=normalizer,
+                                input_steps=[features_valid],
+                                adapter={'X': (
+                                    [(features_valid.name, 'features')]),
+                                },
+                                cache_dirpath=config.env.cache_dirpath, **kwargs)
+
+        return normalizer, normalizer_valid
+
+    else:
+        normalizer = Step(name='normalizer',
+                          transformer=Normalizer(),
+                          input_steps=[features],
+                          adapter={
+                              'X': ([(features.name, 'features')]),
+                          },
+                          cache_dirpath=config.env.cache_dirpath,
+                          **kwargs)
+
+        return normalizer
 
 
 def _feature_by_type_splits(config, train_mode):
@@ -704,11 +747,11 @@ def _join_features(numerical_features, numerical_features_valid,
 PIPELINES = {'baseline': {'train': partial(baseline, train_mode=True),
                           'inference': partial(baseline, train_mode=False)},
              'features_v1_lgbm': {'train': partial(features_v1_lgbm, train_mode=True),
-                                 'inference': partial(features_v1_lgbm, train_mode=False)},
+                                  'inference': partial(features_v1_lgbm, train_mode=False)},
              'features_v2_lgbm': {'train': partial(features_v2_lgbm, train_mode=True),
-                                 'inference': partial(features_v2_lgbm, train_mode=False)},
+                                  'inference': partial(features_v2_lgbm, train_mode=False)},
              'features_v2_xgboost': {'train': partial(features_v2_xgboost, train_mode=True),
-                                    'inference': partial(features_v2_xgboost, train_mode=False)},
-             'features_v2_random_forest': {'train': partial(features_v2_random_forest, train_mode=True),
-                                          'inference': partial(features_v2_random_forest, train_mode=False)},
+                                     'inference': partial(features_v2_xgboost, train_mode=False)},
+             'features_v2_log_reg': {'train': partial(features_v2_log_reg, train_mode=True),
+                                     'inference': partial(features_v2_log_reg, train_mode=False)},
              }

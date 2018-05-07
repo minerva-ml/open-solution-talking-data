@@ -5,12 +5,17 @@ from attrdict import AttrDict
 import numpy as np
 import lightgbm as lgb
 import xgboost as xgb
+from sklearn import linear_model
 from sklearn.externals import joblib
 from sklearn import ensemble
 from sklearn.datasets import dump_svmlight_file
 
 from steps.base import BaseTransformer
 from steps.misc import LightGBM
+
+from utils import get_logger
+
+logger = get_logger()
 
 
 class LightGBMLowMemory(LightGBM):
@@ -53,8 +58,10 @@ class XGBoost(BaseTransformer):
         X = X.values.astype(np.float32)
         X_valid = X_valid.values.astype(np.float32)
 
-        train = self._get_DMatrix(X, y, 'train')
-        valid = self._get_DMatrix(X_valid, y_valid, 'valid')
+        logger.info('Dumping train to libsvm')
+        train = xgb.DMatrix(X, label=y)
+        logger.info('Dumping valid to libsvm')
+        valid = xgb.DMatrix(X_valid, label=y_valid)
 
         self.estimator = xgb.train(self.model_config,
                                    train,
@@ -83,14 +90,6 @@ class XGBoost(BaseTransformer):
         joblib.dump({'estimator': self.estimator,
                      'eval_results': self.evaluation_results}, filepath)
 
-    def _get_DMatrix(self, X, y, suffix):
-        temp_filepath = os.path.join(self.training_config['temp_dir'], '{}.libsvm'.format(suffix))
-        dump_svmlight_file(X, y, temp_filepath)
-
-        del X, y
-        gc.collect()
-        return xgb.DMatrix(temp_filepath)
-
 
 class RandomForestClassifier(BaseTransformer):
     def __init__(self, **params):
@@ -103,6 +102,26 @@ class RandomForestClassifier(BaseTransformer):
 
     def transform(self, X, **kwargs):
         X = X.values.astype(np.float32)
+        prediction = self.estimator.predict_proba(X)[:, 1]
+        return {'prediction': prediction}
+
+    def load(self, filepath):
+        self.estimator = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.estimator, filepath)
+
+
+class LogisticRegression(BaseTransformer):
+    def __init__(self, **params):
+        self.estimator = linear_model.LogisticRegression(**params)
+
+    def fit(self, X, y, **kwargs):
+        self.estimator.fit(X, y)
+        return self
+
+    def transform(self, X, **kwargs):
         prediction = self.estimator.predict_proba(X)[:, 1]
         return {'prediction': prediction}
 
