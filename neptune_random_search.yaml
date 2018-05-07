@@ -79,11 +79,8 @@ parameters:
   xgboost__reg_alpha: 0.0
   xgboost__scale_pos_weight: '[10, 1000, "log-uniform"]'
 
-# Random Forest
-  random_forest_random_search_runs: 100
-  random_forest__n_estimators: 500
-  random_forest__max_depth: '[5,8,15,25,30,None, "list"]'
-  random_forest__min_samples_split: '[1,2,5,10,15,100, "list"]'
-  random_forest__min_samples_leaf: '[1,2,5,10, "list"]'
-  random_forest__max_features: '["log2","sqrt","auto", "list"]'
-  random_forest__class_weight: '{0:1, 1:200}'
+# Logistic Regression
+  log_reg_random_search_runs: 10
+  log_reg__penalty: '["l1","l2", "list"]'
+  log_reg__C: '[0.01, 100, "log-uniform"]'
+  log_reg__class_weight: '{0:1, 1:150}'

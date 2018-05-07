@@ -59,14 +59,14 @@ SOLUTION_CONFIG = AttrDict({
                                                                  }
                                                 }
                                   },
-                      'random_forest': {'n_runs': safe_eval(params.random_forest_random_search_runs),
-                                        'callbacks': {'neptune_monitor': {'name': 'random_forest'
-                                                                          },
-                                                      'save_results': {'filepath': os.path.join(params.experiment_dir,
-                                                                                                'random_search_random_forest.pkl')
-                                                                       }
-                                                      }
-                                        }
+                      'log_reg': {'n_runs': safe_eval(params.log_reg_random_search_runs),
+                                  'callbacks': {'neptune_monitor': {'name': 'log_reg'
+                                                                    },
+                                                'save_results': {'filepath': os.path.join(params.experiment_dir,
+                                                                                          'random_search_log_regl.pkl')
+                                                                 }
+                                                }
+                                  }
                       },
     'dataframe_by_type_splitter': {'numerical_columns': [],
                                    'categorical_columns': ['ip', 'app', 'device', 'os', 'channel'],
@@ -132,6 +132,7 @@ SOLUTION_CONFIG = AttrDict({
                 'max_depth': safe_eval(params.xgboost__max_depth),
                 'gamma': safe_eval(params.xgboost__gamma),
                 'subsample': safe_eval(params.xgboost__subsample),
+                'colsample_bytree': safe_eval(params.xgboost__colsample_bytree),
                 'reg_lambda': safe_eval(params.xgboost__reg_lambda),
                 'reg_alpha': safe_eval(params.xgboost__reg_alpha),
                 'scale_pos_weight': safe_eval(params.xgboost__scale_pos_weight),
@@ -142,13 +143,11 @@ SOLUTION_CONFIG = AttrDict({
                 'verbose': safe_eval(params.verbose)
                 },
 
-    'random_forest': {'n_estimators': safe_eval(params.random_forest__n_estimators),
-                      'max_depth': safe_eval(params.random_forest__max_depth),
-                      'min_samples_split': safe_eval(params.random_forest__min_samples_split),
-                      'min_samples_leaf': safe_eval(params.random_forest__min_samples_leaf),
-                      'max_features': safe_eval(params.random_forest__max_features),
-                      'class_weight': safe_eval(params.random_forest__class_weight),
-                      'n_jobs': safe_eval(params.num_workers),
-                      'verbose': safe_eval(params.verbose)
-                      },
+    'log_reg': {'solver': 'sag',
+                'penalty': safe_eval(params.log_reg__penalty),
+                'C': safe_eval(params.log_reg__C),
+                'class_weight': safe_eval(params.log_reg__class_weight),
+                'n_jobs': safe_eval(params.num_workers),
+                'verbose': safe_eval(params.verbose)
+                },
 })
