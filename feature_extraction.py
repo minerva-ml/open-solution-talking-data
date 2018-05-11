@@ -233,6 +233,28 @@ class TimeDelta(BaseTransformer):
             return groupby_object
 
 
+class TimeCycle(BaseTransformer):
+
+    def __init__(self, timestamp_columns):
+        self.timestamp_columns = timestamp_columns
+
+    @property
+    def timecycle_names(self):
+        timecycle_names = ['hourfloat_{},timecycle_{}_x,timecycle_{}_y'.format(*([time_column] * 3)).split(',')
+                           for time_column in self.timestamp_columns]
+        return timecycle_names
+
+    def transform(self, timestamp_features):
+        for timestamp_column, timecycle_name in zip(self.timestamp_columns, self.timecycle_names):
+            timestamp_features[timecycle_name[0]] = timestamp_features[timestamp_column].dt.hour + timestamp_features[
+                timestamp_column].dt.minute / 60.
+
+            timestamp_features[timecycle_name[1]] = np.sin(2. * np.pi * timestamp_features[timecycle_name[0]] / 24.)
+            timestamp_features[timecycle_name[2]] = np.cos(2. * np.pi * timestamp_features[timecycle_name[0]] / 24.)
+
+        return {'numerical_features': timestamp_features[sum(self.timecycle_names, [])]}
+
+
 class GroupbyAggregations(BaseTransformer):
     def __init__(self, groupby_aggregations):
         self.groupby_aggregations = groupby_aggregations
