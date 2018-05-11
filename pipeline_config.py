@@ -74,7 +74,8 @@ SOLUTION_CONFIG = AttrDict({
                                    },
 
     'time_delta': {'groupby_specs': [['ip', 'app', 'device', 'os']],
-                   'timestamp_column': 'click_time'
+                   'timestamp_column': 'click_time',
+                   't_lags': [-1,1]
                    },
 
     'groupby_aggregation': {'groupby_aggregations': [
