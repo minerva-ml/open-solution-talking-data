@@ -197,41 +197,52 @@ class BinaryEncoder(BaseTransformer):
 
 
 class TimeDelta(BaseTransformer):
-    def __init__(self, groupby_specs, timestamp_column):
+    def __init__(self, groupby_specs, timestamp_column, t_lags):
         self.groupby_specs = groupby_specs
         self.timestamp_column = timestamp_column
+        self.t_lags = t_lags
 
     @property
     def time_delta_names(self):
-        time_delta_names = ['time_delta_{}'.format('_'.join(groupby_spec))
-                            for groupby_spec in self.groupby_specs]
+        time_delta_names = ['time_delta_{}_{}'.format('_'.join(groupby_spec), "t" + str(t_lag))
+                            for groupby_spec in self.groupby_specs
+                            for t_lag in self.t_lags]
         return time_delta_names
 
     @property
     def is_null_names(self):
-        is_null_names = ['time_delta_is_nan_{}'.format('_'.join(groupby_spec))
-                         for groupby_spec in self.groupby_specs]
+        is_null_names = ['time_delta_is_nan_{}_{}'.format('_'.join(groupby_spec), "t" + str(t_lag))
+                         for groupby_spec in self.groupby_specs
+                         for t_lag in self.t_lags]
         return is_null_names
 
     def transform(self, categorical_features, timestamp_features):
         X = pd.concat([categorical_features, timestamp_features], axis=1)
-        for groupby_spec, time_delta_name, is_null_name in zip(self.groupby_specs,
-                                                               self.time_delta_names,
-                                                               self.is_null_names):
-            X[time_delta_name] = X.groupby(groupby_spec)[self.timestamp_column].apply(self._time_delta).reset_index(
-                level=list(range(len(groupby_spec))), drop=True).astype(np.float32)
-            X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
-            X[time_delta_name].fillna(0, inplace=True)
+
+        for groupby_spec in self.groupby_specs:
+            for t_lag, time_delta_name, is_null_name in zip(
+                    self.t_lags,
+                    self.time_delta_names,
+                    self.is_null_names):
+                org_xindex = X.index
+                sortby_specs = groupby_spec[:]
+
+                if sortby_specs[-1] != self.timestamp_column:
+                    sortby_specs.append(self.timestamp_column)
+
+                X.sort_values(by=sortby_specs, inplace=True)
+                X[time_delta_name] = X[self.timestamp_column].diff(t_lag).dt.total_seconds().astype(np.float32)
+
+                for var in groupby_spec:
+                    X.loc[X[var] != X[var].shift(t_lag), time_delta_name] = None
+
+                X = X.reindex(org_xindex)
+
+                X[is_null_name] = pd.isnull(X[time_delta_name]).astype(int)
+                X[time_delta_name].fillna(0, inplace=True)
+
         return {'numerical_features': X[self.time_delta_names],
                 'categorical_features': X[self.is_null_names]}
-
-    def _time_delta(self, groupby_object):
-        if len(groupby_object) == 1:
-            return pd.Series(np.nan, index=groupby_object.index)
-        else:
-            groupby_object = groupby_object.sort_values().diff().dt.seconds
-            return groupby_object
-
 
 class TimeCycle(BaseTransformer):
 
