@@ -77,6 +77,8 @@ SOLUTION_CONFIG = AttrDict({
                    'timestamp_column': 'click_time'
                    },
 
+    'time_cycle': {'timestamp_columns': ['click_time']},
+
     'groupby_aggregation': {'groupby_aggregations': [
         {'groupby': ['ip'], 'select': 'app', 'agg': 'count'},
         {'groupby': ['ip', 'app'], 'select': 'device', 'agg': 'count'},
