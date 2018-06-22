@@ -5,6 +5,9 @@ This is an open solution to the [TalkingData Challenge](https://www.kaggle.com/c
 ## Goal
 Deliver open source, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
 
+## Disclaimer
+In this open source solution you will find references to the neptune.ml. It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
+
 ## Usage: Fast Track
 1. clone this repository: `git clone https://github.com/neptune-ml/open-solution-talking-data.git`
 1. install requirements
