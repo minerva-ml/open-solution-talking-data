@@ -2,6 +2,9 @@
 
 This is an open solution to the [TalkingData Challenge](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection).
 
+## More competitions :sparkler:
+Check collection of [public projects :gift:](https://app.neptune.ml/-/explore), where you can find multiple Kaggle competitions with code, experiments and outputs.
+
 ## Goal
 Deliver open source, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
 
