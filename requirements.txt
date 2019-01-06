@@ -18,4 +18,4 @@ lightgbm==2.1.0
 nltk==3.2.5
 tensorflow==1.7.0
 xgboost==0.71
-PyYAML==3.12
+pyyaml>=4.2b1
