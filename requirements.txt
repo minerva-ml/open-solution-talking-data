@@ -3,7 +3,7 @@ scipy==1.0.0
 matplotlib==2.1.1
 click==6.7
 pandas==0.22.0
-opencv_python==3.4.0.12
+opencv_python==3.4.7.28
 tqdm==4.11.2
 pydot_ng==1.0.0
 catboost==0.6.2
