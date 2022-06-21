@@ -8,7 +8,7 @@ tqdm==4.11.2
 pydot_ng==1.0.0
 catboost==0.6.2
 imgaug==0.2.5
-numpy==1.21.0
+numpy==1.22.0
 neptune_cli==2.8.0
 ipython==7.16.3
 Pillow>=6.2.2
